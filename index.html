@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSON UI Builder — Premium Dashboard Editor</title>
+  <meta name="description" content="A powerful drag-and-drop JSON UI builder with IndexedDB storage, Bootstrap 5 components, live preview, and component tree visualization.">
+  <!-- Bootstrap 5 CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Google Fonts - Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Custom Styling -->
+  <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+
+<!-- TOP NAVBAR -->
+<div id="navbar">
+  <div class="nav-left">
+    <div class="brand">
+      <i class="bi bi-grid-1x2-fill brand-glow"></i>
+      <span class="brand-text">JSON<span class="brand-accent">UI</span></span>
+    </div>
+    <div class="nav-sep"></div>
+    <div class="db-section">
+      <span class="db-badge"><span class="dot"></span><span id="db-name-label">uibuilder</span></span>
+    </div>
+    <div class="nav-sep"></div>
+    <div class="file-section">
+      <select id="file-selector" class="form-select form-select-sm file-dropdown" onchange="loadSelectedFile()" title="Open file">
+        <option value="">— new / unsaved —</option>
+      </select>
+      <button class="nav-btn primary" onclick="showSaveModal()" title="Save (Ctrl+S)"><i class="bi bi-floppy"></i> Save</button>
+      <button class="nav-btn" onclick="showFileManager()" title="File Manager"><i class="bi bi-folder2-open"></i> Files</button>
+    </div>
+  </div>
+
+  <div class="nav-center">
+    <div class="shortcut-hint">Del <span>remove</span> · Esc <span>deselect</span> · Ctrl+Z <span>undo</span> · Ctrl+T <span>tree</span></div>
+  </div>
+  
+  <div class="nav-right">
+    <button class="nav-btn success" onclick="previewPage()" title="Live Preview"><i class="bi bi-eye"></i> Preview</button>
+    <div class="nav-sep"></div>
+    <button class="nav-btn" id="tree-toggle-btn" onclick="toggleTreePanel()" title="Component Tree (Ctrl+T)"><i class="bi bi-diagram-3"></i> Tree</button>
+    <button class="nav-btn" onclick="toggleJsonDrawer()" title="JSON Output (Ctrl+J)"><i class="bi bi-code-slash"></i> JSON</button>
+    <button class="nav-btn" onclick="copyJson()" title="Copy JSON"><i class="bi bi-clipboard"></i></button>
+    <button class="nav-btn" onclick="validateJson()" title="Validate JSON"><i class="bi bi-check2-circle"></i></button>
+    <div class="nav-sep"></div>
+    <button class="nav-btn" onclick="undoLast()" id="undo-btn" title="Undo (Ctrl+Z)" disabled><i class="bi bi-arrow-counterclockwise"></i></button>
+    <button class="nav-btn danger" onclick="clearCanvas()" title="Clear Canvas"><i class="bi bi-trash"></i></button>
+  </div>
+</div>
+
+<!-- MAIN DASHBOARD WORKSPACE -->
+<div id="app">
+  <!-- LEFT SIDEBAR: PALETTE -->
+  <div id="palette-container">
+    <div class="sidebar-header">
+      <i class="bi bi-grid-3x2-gap sidebar-hicon"></i>
+      <span>Components</span>
+      <span class="sidebar-hcount" id="palette-count"></span>
+    </div>
+    <div class="palette-search-box">
+      <div class="search-input-wrap">
+        <i class="bi bi-search search-icon"></i>
+        <input class="search-input" id="palette-search" placeholder="Search components…" oninput="filterPalette()">
+      </div>
+    </div>
+    <div id="palette"></div>
+  </div>
+
+  <!-- COMPONENT TREE DOCKABLE PANEL -->
+  <div id="tree-panel">
+    <div id="tree-header">
+      <i class="bi bi-diagram-3 tree-header-icon"></i>
+      <span>Component Tree</span>
+      <div class="tree-controls ms-auto">
+        <button class="tree-ctrl-btn" onclick="expandAllTree()" title="Expand All"><i class="bi bi-arrows-expand"></i></button>
+        <button class="tree-ctrl-btn" onclick="collapseAllTree()" title="Collapse All"><i class="bi bi-arrows-collapse"></i></button>
+      </div>
+    </div>
+    <input class="tree-search-bar" id="tree-search" placeholder="🔍 Search tree…" oninput="renderTree()">
+    <div id="tree-body">
+      <div class="tree-empty"><i class="bi bi-diagram-3" style="font-size:24px;display:block;margin-bottom:6px"></i>No components yet</div>
+    </div>
+  </div>
+
+  <!-- CANVAS AREA (Drop Zone) -->
+  <div id="canvas-area">
+    <div id="canvas-toolbar">
+      <div class="ctb-left">
+        <span class="ctb-label"><i class="bi bi-display"></i> Canvas</span>
+        <span id="canvas-info" class="ctb-count">0 components</span>
+      </div>
+      <div class="ctb-right">
+        <button class="ctb-btn" onclick="clearCanvas()" title="Clear all"><i class="bi bi-trash"></i></button>
+        <button class="ctb-btn" onclick="undoLast()" id="undo-btn2" title="Undo"><i class="bi bi-arrow-counterclockwise"></i></button>
+      </div>
+    </div>
+    <div id="canvas-wrap">
+      <div id="canvas">
+        <div id="canvas-empty">
+          <i class="bi bi-grid-1x2"></i>
+          <span>Drag &amp; drop components from the palette</span>
+          <span class="canvas-empty-sub">Click any component, or drop it into a container for nesting</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- CANVAS FOOTER / STATUS BAR -->
+    <div id="canvas-footer">
+      <div class="foot-left">
+        <span class="foot-item"><i class="bi bi-database"></i> <span id="stat-file">unsaved</span></span>
+        <span class="foot-sep"></span>
+        <span class="foot-item"><i class="bi bi-layers"></i> <strong id="stat-blocks">0</strong> blocks</span>
+      </div>
+      <div class="foot-right">
+        <span class="foot-item"><i class="bi bi-circle-fill foot-dot" id="stat-dot"></i> <span id="stat-saved">not saved</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR: PROPERTIES EDITOR & PREVIEW -->
+  <div id="right-sidebar">
+    <div class="sidebar-header">
+      <i class="bi bi-sliders sidebar-hicon"></i>
+      <span>Properties</span>
+    </div>
+    <div id="editor-panel">
+      <div id="ep-placeholder">
+        <i class="bi bi-cursor-text"></i>
+        <p>Click any component on the canvas or tree to customize its attributes</p>
+      </div>
+      <div id="ep-content" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- JSON DRAWER -->
+<div id="json-drawer">
+  <div id="json-drawer-header">
+    <i class="bi bi-code-slash" style="color:var(--accent)"></i>
+    <span>JSON Output (with cid + comment)</span>
+    <div class="ms-auto d-flex gap-2">
+      <button class="tb-btn" onclick="copyJson()"><i class="bi bi-clipboard"></i> Copy</button>
+      <button class="tb-btn" id="json-fmt-btn" onclick="toggleJsonFormat()"><i class="bi bi-braces"></i> Pretty</button>
+      <button class="tb-btn" onclick="toggleJsonDrawer()"><i class="bi bi-x-lg"></i></button>
+    </div>
+  </div>
+  <div id="json-output"></div>
+</div>
+
+<!-- SAVE MODAL -->
+<div class="modal fade modal-dark" id="saveModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-floppy me-2"></i>Save to WebDB</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label" style="font-size:12px;color:var(--muted)">Filename (.json)</label>
+        <div class="input-group input-group-sm">
+          <input type="text" class="form-control" id="save-filename" placeholder="my-page" style="background:#0f1117;border-color:var(--panel-border);color:var(--text)">
+          <span class="input-group-text" style="background:#1c2433;border-color:var(--panel-border);color:var(--muted)">.json</span>
+        </div>
+        <div class="mt-2" style="font-size:11px;color:var(--muted)">Saves to <code>uibuilder/<span id="save-path-preview">filename.json</span></code></div>
+      </div>
+      <div class="modal-footer">
+        <button class="tb-btn" data-bs-dismiss="modal">Cancel</button>
+        <button class="tb-btn primary" onclick="saveToDb()"><i class="bi bi-floppy"></i> Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FILE MANAGER MODAL -->
+<div class="modal fade modal-dark" id="fmModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-folder2-open me-2"></i>WebDB — uibuilder</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:0">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--panel-border)">
+          <input type="text" class="ep-input" id="fm-search" placeholder="Search files…" style="max-width:240px" oninput="renderFileManager()">
+          <span style="font-size:11px;color:var(--muted);margin-left:auto" id="fm-count">0 files</span>
+        </div>
+        <div id="fm-list" style="padding:10px;min-height:200px;max-height:400px;overflow-y:auto"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="tb-btn danger" onclick="deleteCurrentFile()"><i class="bi bi-trash"></i> Delete selected</button>
+        <button class="tb-btn" data-bs-dismiss="modal">Close</button>
+        <button class="tb-btn primary" onclick="loadFromFileManager()" id="fm-load-btn" disabled><i class="bi bi-folder-symlink"></i> Load</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div class="modal fade modal-dark" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Live Preview (Bootstrap 5)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:0;background:#fff">
+        <iframe id="preview-iframe" style="width:100%;height:70vh;border:none"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- Bootstrap 5 JS Bundle CDN -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
