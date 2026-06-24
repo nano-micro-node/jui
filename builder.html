@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON UI Builder — WebDB</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ═══════════════ TOPBAR ═══════════════ -->
+<div id="topbar">
+  <div class="brand"><i class="bi bi-grid-1x2-fill"></i> UI Builder</div>
+  <div class="db-badge"><span class="dot"></span><span id="db-name-label">uibuilder</span></div>
+  <div class="topbar-sep"></div>
+
+  <select id="file-selector" onchange="loadSelectedFile()">
+    <option value="">— new / unsaved —</option>
+  </select>
+
+  <button class="tb-btn primary" onclick="showSaveModal()"><i class="bi bi-floppy"></i> Save</button>
+  <button class="tb-btn" onclick="showFileManager()"><i class="bi bi-folder2-open"></i> Files</button>
+
+  <!-- right actions -->
+  <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
+    <button class="tb-btn success" onclick="exportHtml()"><i class="bi bi-filetype-html"></i> Export</button>
+    <button class="tb-btn" onclick="toggleJsonDrawer()" title="Ctrl+J"><i class="bi bi-code-slash"></i> JSON</button>
+    <button class="tb-btn success" onclick="copyJson()"><i class="bi bi-clipboard"></i> Copy</button>
+  </div>
+</div>
+
+<!-- ═══════════════ SHELL ═══════════════ -->
+<div id="shell">
+
+  <!-- ═══ LEFT SIDEBAR ═══ -->
+  <div id="left-sidebar">
+
+    <!-- Nav icons column -->
+    <div id="sidebar-nav">
+      <button class="snav-btn active" id="snav-components" onclick="setLeftTab('components')" title="Components">
+        <i class="bi bi-grid-3x3-gap"></i><span>Components</span>
+      </button>
+      <button class="snav-btn" id="snav-tree" onclick="setLeftTab('tree')" title="Component Tree (Ctrl+T)">
+        <i class="bi bi-diagram-3"></i><span>Tree</span>
+      </button>
+      <button class="snav-btn" id="snav-search" onclick="setLeftTab('search')" title="Search">
+        <i class="bi bi-search"></i><span>Search</span>
+      </button>
+      <button class="snav-btn" id="snav-layouts" onclick="setLeftTab('layouts')" title="Page Layouts">
+        <i class="bi bi-layout-sidebar-inset"></i><span>Layouts</span>
+      </button>
+      <div class="snav-sep"></div>
+      <button class="snav-btn" onclick="undoLast()" id="undo-btn" title="Undo (Ctrl+Z)" disabled>
+        <i class="bi bi-arrow-counterclockwise"></i><span>Undo</span>
+      </button>
+      <button class="snav-btn" onclick="clearCanvas()" title="Clear canvas">
+        <i class="bi bi-trash"></i><span>Clear</span>
+      </button>
+      <button class="snav-btn" onclick="validateJson()" title="Validate JSON">
+        <i class="bi bi-check2-circle"></i><span>Validate</span>
+      </button>
+      <div class="snav-sep"></div>
+      <button class="snav-btn" onclick="previewPage()" title="Preview">
+        <i class="bi bi-eye"></i><span>Preview</span>
+      </button>
+    </div>
+
+    <!-- Sliding panel -->
+    <div id="left-panel">
+
+      <!-- COMPONENTS panel -->
+      <div class="lpanel" id="lp-components">
+        <div class="lp-header">
+          <i class="bi bi-grid-3x3-gap" style="color:var(--accent)"></i>
+          <span>Components</span>
+          <input class="lp-search" id="pal-search" placeholder="Filter…" oninput="filterPalette(this.value)">
+        </div>
+        <div id="palette"></div>
+      </div>
+
+      <!-- TREE panel (hover overlay) -->
+      <div class="lpanel" id="lp-tree" style="display:none">
+        <div class="lp-header">
+          <i class="bi bi-diagram-3" style="color:var(--accent)"></i>
+          <span>Component Tree</span>
+          <button class="lp-hbtn" onclick="expandAllTree()" title="Expand All"><i class="bi bi-arrows-expand"></i></button>
+          <button class="lp-hbtn" onclick="collapseAllTree()" title="Collapse All"><i class="bi bi-arrows-collapse"></i></button>
+        </div>
+        <input class="lp-search" id="tree-search" placeholder="Search components…" oninput="renderTree()" style="margin:6px 8px;width:calc(100% - 16px)">
+        <div id="tree-body">
+          <div class="tree-empty"><i class="bi bi-diagram-3" style="font-size:24px;display:block;margin-bottom:6px"></i>No components yet</div>
+        </div>
+      </div>
+
+      <!-- SEARCH panel -->
+      <div class="lpanel" id="lp-search" style="display:none">
+        <div class="lp-header">
+          <i class="bi bi-search" style="color:var(--accent)"></i>
+          <span>Search all</span>
+        </div>
+        <input class="lp-search" id="global-search" placeholder="Search type, id, class, cid…" oninput="globalSearch(this.value)" style="margin:6px 8px;width:calc(100% - 16px)">
+        <div id="search-results" style="padding:4px 0;flex:1;overflow-y:auto">
+          <div class="tree-empty" style="font-size:11px">Type to search all components</div>
+        </div>
+      </div>
+
+      <!-- LAYOUTS panel -->
+      <div class="lpanel" id="lp-layouts" style="display:none; flex-direction:column; height:100%;">
+        <div class="lp-header">
+          <i class="bi bi-layout-sidebar-inset" style="color:var(--accent)"></i>
+          <span>Layouts & Presets</span>
+        </div>
+        <div id="layouts-body" style="padding:12px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:16px;"></div>
+      </div>
+
+    </div><!-- /left-panel -->
+  </div><!-- /left-sidebar -->
+
+  <!-- ═══ CANVAS (drop zone) ═══ -->
+  <div id="center-col">
+    <div id="canvas-toolbar">
+      <span style="font-size:11px;color:var(--muted)" id="canvas-info">0 components</span>
+      <div style="margin-left:auto;display:flex;gap:5px;align-items:center">
+        <span class="tb-badge" id="zoom-label">100%</span>
+        <button class="tb-btn" onclick="zoomCanvas(-10)" title="Zoom out"><i class="bi bi-zoom-out"></i></button>
+        <button class="tb-btn" onclick="zoomCanvas(10)"  title="Zoom in"><i class="bi bi-zoom-in"></i></button>
+        <button class="tb-btn" onclick="zoomCanvas(0)"   title="Reset zoom"><i class="bi bi-fullscreen-exit"></i></button>
+      </div>
+    </div>
+    <div id="canvas-wrap">
+      <div id="canvas" style="transform-origin:top left">
+        <div id="canvas-empty">
+          <i class="bi bi-grid-1x2"></i>
+          <span>Drag components from the palette</span>
+          <span style="font-size:11px;color:#444">Supports nesting — drop inside any container</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT SIDEBAR (editor + preview) ═══ -->
+  <div id="right-sidebar">
+
+    <!-- Right sidebar nav tabs -->
+    <div id="right-nav">
+      <button class="rnav-btn active" id="rnav-editor" onclick="setRightTab('editor')" title="Properties">
+        <i class="bi bi-sliders"></i><span>Props</span>
+      </button>
+      <button class="rnav-btn" id="rnav-preview" onclick="setRightTab('preview')" title="Live Preview">
+        <i class="bi bi-eye"></i><span>Preview</span>
+      </button>
+      <button class="rnav-btn" id="rnav-json" onclick="setRightTab('json')" title="JSON">
+        <i class="bi bi-code-slash"></i><span>JSON</span>
+      </button>
+    </div>
+
+    <!-- Editor panel -->
+    <div class="rpanel" id="rp-editor">
+      <div id="ep-placeholder">
+        <i class="bi bi-cursor-text"></i>
+        <p>Click any component to edit its properties</p>
+      </div>
+      <div id="ep-content" style="display:none"></div>
+    </div>
+
+    <!-- Live preview panel -->
+    <div class="rpanel" id="rp-preview" style="display:none">
+      <div class="rp-header">
+        <i class="bi bi-eye" style="color:var(--accent)"></i>
+        <span>Live Preview</span>
+        <select class="lp-search" id="preview-width-sel" onchange="setPreviewWidth(this.value)" style="margin-left:auto;width:auto;font-size:10px;padding:2px 6px">
+          <option value="100%">Full width</option>
+          <option value="390px">Mobile 390px</option>
+          <option value="768px">Tablet 768px</option>
+          <option value="1280px">Desktop 1280px</option>
+        </select>
+      </div>
+      <div id="rp-preview-wrap">
+        <div id="rp-preview-area"></div>
+      </div>
+    </div>
+
+    <!-- JSON panel (right side) -->
+    <div class="rpanel" id="rp-json" style="display:none">
+      <div class="rp-header">
+        <i class="bi bi-code-slash" style="color:var(--accent)"></i>
+        <span>JSON Output</span>
+        <button class="lp-hbtn" onclick="toggleJsonFormat()" id="json-fmt-btn" style="margin-left:auto"><i class="bi bi-braces"></i> Pretty</button>
+        <button class="lp-hbtn" onclick="copyJson()"><i class="bi bi-clipboard"></i></button>
+      </div>
+      <div id="rp-json-output" style="font-family:'Consolas','Courier New',monospace;font-size:11px;line-height:1.6;color:#cdd6f4;padding:10px 12px;overflow-y:auto;flex:1;white-space:pre;background:#0a0d13"></div>
+    </div>
+
+  </div><!-- /right-sidebar -->
+
+</div><!-- /shell -->
+
+<!-- ═══════════════ STATUS BAR ═══════════════ -->
+<div id="statusbar">
+  <div class="stat-item"><i class="bi bi-database"></i> <span id="stat-db">uibuilder</span></div>
+  <div class="sep"></div>
+  <div class="stat-item"><i class="bi bi-file-code"></i> <span id="stat-file">unsaved</span></div>
+  <div class="sep"></div>
+  <div class="stat-item"><i class="bi bi-layers"></i> <span id="stat-blocks">0 blocks</span></div>
+  <div class="sep"></div>
+  <div class="stat-item" style="margin-left:auto">
+    <span style="color:var(--muted);font-size:10px">Ctrl+S Save · Ctrl+Z Undo · Ctrl+J JSON · Ctrl+T Tree · Del Remove</span>
+  </div>
+  <div class="sep"></div>
+  <div class="stat-item"><i class="bi bi-cloud-check"></i> <span id="stat-saved">not saved</span></div>
+</div>
+
+<!-- ═══════════════ JSON DRAWER (bottom) ═══════════════ -->
+<div id="json-drawer">
+  <div id="json-drawer-header">
+    <i class="bi bi-code-slash" style="color:var(--accent)"></i>
+    <span>JSON Output (with cid + comment)</span>
+    <button class="tb-btn" onclick="copyJson()"><i class="bi bi-clipboard"></i> Copy</button>
+    <button class="tb-btn" id="json-fmt-btn-drawer" onclick="toggleJsonFormat()"><i class="bi bi-braces"></i> Pretty</button>
+    <button class="tb-btn" onclick="toggleJsonDrawer()"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div id="json-output"></div>
+</div>
+
+<!-- ═══════════════ SAVE MODAL ═══════════════ -->
+<div class="modal fade modal-dark" id="saveModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-floppy me-2"></i>Save to WebDB</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label" style="font-size:12px;color:var(--muted)">Filename (.json)</label>
+        <div class="input-group input-group-sm">
+          <input type="text" class="form-control" id="save-filename" placeholder="my-page.json"
+            style="background:#0f1117;border-color:var(--panel-border);color:var(--text)">
+          <span class="input-group-text" style="background:#1c2433;border-color:var(--panel-border);color:var(--muted)">.json</span>
+        </div>
+        <div class="mt-2" style="font-size:11px;color:var(--muted)">
+          Saves to <code>uibuilder/<span id="save-path-preview">filename.json</span></code>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="tb-btn" data-bs-dismiss="modal">Cancel</button>
+        <button class="tb-btn primary" onclick="saveToDb()"><i class="bi bi-floppy"></i> Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ FILE MANAGER MODAL ═══════════════ -->
+<div class="modal fade modal-dark" id="fmModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-folder2-open me-2"></i>WebDB — uibuilder</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:0">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--panel-border)">
+          <input type="text" class="ep-input" id="fm-search" placeholder="Search files…" style="max-width:240px" oninput="renderFileManager()">
+          <span style="font-size:11px;color:var(--muted);margin-left:auto" id="fm-count">0 files</span>
+        </div>
+        <div id="fm-list" style="padding:10px;min-height:200px;max-height:400px;overflow-y:auto"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="tb-btn danger" onclick="deleteCurrentFile()"><i class="bi bi-trash"></i> Delete selected</button>
+        <button class="tb-btn" data-bs-dismiss="modal">Close</button>
+        <button class="tb-btn primary" onclick="loadFromFileManager()" id="fm-load-btn" disabled><i class="bi bi-folder-symlink"></i> Load</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PREVIEW MODAL ═══════════════ -->
+<div class="modal fade modal-dark" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Live Preview (Bootstrap 5)</h5>
+        <div style="display:flex;gap:8px;margin-left:auto;margin-right:12px">
+          <button class="tb-btn" onclick="setPreviewDevice('100%')" title="Full"><i class="bi bi-display"></i></button>
+          <button class="tb-btn" onclick="setPreviewDevice('768px')" title="Tablet"><i class="bi bi-tablet"></i></button>
+          <button class="tb-btn" onclick="setPreviewDevice('390px')" title="Mobile"><i class="bi bi-phone"></i></button>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:16px;background:#1a1a2e;display:flex;justify-content:center">
+        <iframe id="preview-iframe" style="background:#fff;border:none;border-radius:8px;transition:width .3s;width:100%;height:70vh"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TOAST ═══════════════ -->
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+<script>
+/* ── Extra UI logic for new layout ── */
+
+/* Left sidebar tab switching */
+let currentLeftTab = 'components';
+function setLeftTab(tab){
+  currentLeftTab = tab;
+  document.querySelectorAll('.snav-btn[id^="snav-"]').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.lpanel').forEach(p=>p.style.display='none');
+  const btn = document.getElementById('snav-'+tab);
+  if(btn) btn.classList.add('active');
+  const panel = document.getElementById('lp-'+tab);
+  if(panel) panel.style.display='flex';
+  // Tree panel: show left-panel as overlay
+  const lp = document.getElementById('left-panel');
+  if(tab==='tree'){
+    lp.classList.add('tree-overlay');
+    renderTree();
+  } else {
+    lp.classList.remove('tree-overlay');
+  }
+  if(tab==='layouts'){
+    renderLayoutsPanel();
+  }
+}
+
+/* Right sidebar tab switching */
+let currentRightTab = 'editor';
+function setRightTab(tab){
+  currentRightTab = tab;
+  document.querySelectorAll('.rnav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.rpanel').forEach(p=>p.style.display='none');
+  document.getElementById('rnav-'+tab).classList.add('active');
+  document.getElementById('rp-'+tab).style.display='flex';
+  if(tab==='json') renderRightJson();
+  if(tab==='preview') renderRightPreview();
+}
+
+/* Palette filter */
+function filterPalette(q){
+  const s = (q||'').toLowerCase();
+  document.querySelectorAll('.pal-item').forEach(el=>{
+    const name = el.querySelector('.name')?.textContent.toLowerCase()||'';
+    const sub  = el.querySelector('.sub')?.textContent.toLowerCase()||'';
+    const type = (el.dataset.type||'').toLowerCase();
+    el.style.display = (!s||name.includes(s)||sub.includes(s)||type.includes(s)) ? '' : 'none';
+  });
+  document.querySelectorAll('.pal-group-label').forEach(g=>{
+    const items = [];
+    let n = g.nextElementSibling;
+    while(n && !n.classList.contains('pal-group-label')){ items.push(n); n=n.nextElementSibling; }
+    g.style.display = items.some(i=>i.style.display!=='none') ? '' : 'none';
+  });
+}
+
+/* Global search */
+function globalSearch(q){
+  const container = document.getElementById('search-results');
+  if(!q){ container.innerHTML='<div class="tree-empty" style="font-size:11px">Type to search all components</div>'; return; }
+  const results=[];
+  function search(arr,depth){
+    arr.forEach(b=>{
+      const match = b.type.includes(q)||b.cid.includes(q)||(b.title||'').toLowerCase().includes(q)||(b.id||'').toLowerCase().includes(q)||(b.class||'').toLowerCase().includes(q)||(b.comment||'').toLowerCase().includes(q);
+      if(match) results.push({b,depth});
+      if(b.children) search(b.children,depth+1);
+    });
+  }
+  search(blocks,0);
+  if(!results.length){container.innerHTML='<div class="tree-empty" style="font-size:11px;color:var(--muted)">No matches found</div>';return;}
+  container.innerHTML=results.map(({b})=>`
+    <div class="tree-row" onclick="selectBlock('${b._uid}');setLeftTab('components')" style="padding:5px 10px;cursor:pointer" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background=''">
+      <i class="bi ${COMP_ICONS[b.type]||'bi-square'}" style="color:${getCompColor(b.type)};font-size:12px;margin-right:6px"></i>
+      <span style="font-size:12px;color:var(--text2)">${b.type}</span>
+      <span style="font-size:10px;color:#555;font-family:monospace;margin-left:6px">${b.cid}</span>
+      ${b.title?`<span style="font-size:10px;color:var(--muted);margin-left:4px">"${b.title.slice(0,20)}"</span>`:''}
+    </div>`).join('');
+}
+
+/* Right panel JSON render */
+function renderRightJson(){
+  const out = buildJson();
+  document.getElementById('rp-json-output').textContent = JSON.stringify(out,null,jsonPretty?2:0);
+}
+
+/* Right panel component preview */
+function renderRightPreview(){
+  const area = document.getElementById('rp-preview-area');
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText='width:100%;height:100%;border:none;background:#fff';
+  area.innerHTML='';
+  area.appendChild(iframe);
+  iframe.srcdoc = buildPreviewHtml();
+}
+
+function setPreviewWidth(w){
+  document.getElementById('rp-preview-area').style.width=w;
+}
+
+/* Canvas zoom */
+let canvasZoom = 100;
+function zoomCanvas(delta){
+  if(delta===0){ canvasZoom=100; }
+  else { canvasZoom=Math.max(50,Math.min(200,canvasZoom+delta)); }
+  document.getElementById('canvas').style.transform=`scale(${canvasZoom/100})`;
+  document.getElementById('zoom-label').textContent=canvasZoom+'%';
+}
+
+/* Preview device size in modal */
+function setPreviewDevice(w){
+  document.getElementById('preview-iframe').style.width=w;
+}
+
+/* Register after-render hook — avoids broken function-hoisting patch pattern */
+onAfterRender(function(){
+  if(currentRightTab==='json') renderRightJson();
+  if(currentRightTab==='preview') renderRightPreview();
+});
+
+/* Register after JSON drawer hook */
+onAfterJsonDrawer(function(){
+  if(currentRightTab==='json') renderRightJson();
+});
+
+/* Override toggleTreePanel to use new tab system */
+function toggleTreePanel(){
+  if(currentLeftTab==='tree') setLeftTab('components');
+  else setLeftTab('tree');
+}
+
+/* Init default tab */
+setLeftTab('components');
+setRightTab('editor');
+</script>
+</body>
+</html>

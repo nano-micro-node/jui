@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON Page Loader — WebDB</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* ── Loader-specific overrides ── */
+  #loader-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ── Page list bar ── */
+  #page-bar {
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--panel-border);
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    flex-shrink: 0;
+  }
+  #page-bar .brand {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    margin-right: 6px;
+  }
+  .page-btn {
+    background: #1c2433;
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    padding: 4px 13px;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background .12s, border-color .12s, color .12s;
+    white-space: nowrap;
+  }
+  .page-btn:hover { background: var(--hover-bg); border-color: var(--muted); color: var(--text); }
+  .page-btn.active { background: #0d1726; border-color: var(--accent); color: var(--accent); }
+  .page-btn .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; }
+  #bar-sep { width: 1px; height: 22px; background: var(--panel-border); flex-shrink: 0; margin: 0 2px; }
+  #bar-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+  /* ── Loading / empty states ── */
+  #loader-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--muted);
+    padding: 60px 20px;
+  }
+  #loader-state i { font-size: 48px; color: var(--panel-border); }
+  #loader-state h4 { font-size: 16px; color: var(--text2); margin: 0; }
+  #loader-state p { font-size: 12px; margin: 0; text-align: center; max-width: 320px; }
+
+  /* ── Rendered page area ── */
+  #render-area {
+    flex: 1;
+    overflow: auto;
+    background: #fff;
+    display: none;
+  }
+  #render-area iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
+  /* ── Device toolbar ── */
+  #device-bar {
+    background: var(--panel-bg);
+    border-top: 1px solid var(--panel-border);
+    padding: 6px 14px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  #device-bar.visible { display: flex; }
+  .dev-btn {
+    background: none;
+    border: 1px solid var(--panel-border);
+    border-radius: 5px;
+    padding: 3px 9px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all .12s;
+  }
+  .dev-btn:hover { border-color: var(--muted); color: var(--text2); }
+  .dev-btn.active { border-color: var(--accent); color: var(--accent); background: #0d1726; }
+
+  /* ── Loading spinner ── */
+  .spin { animation: spin .7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Page count badge ── */
+  #page-count {
+    font-size: 10px;
+    background: #1c2433;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 2px 8px;
+    color: var(--muted);
+  }
+
+  /* ── No files hint ── */
+  .hint-link {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .hint-link:hover { text-decoration: underline; }
+
+  /* ── Active page label in device bar ── */
+  #active-label {
+    font-family: monospace;
+    color: var(--text2);
+    font-size: 11px;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Page render frame wrapper for centering at device widths ── */
+  #frame-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: auto;
+    background: #e8eaf0;
+  }
+  #page-iframe {
+    border: none;
+    background: #fff;
+    transition: width .25s, box-shadow .25s;
+    min-height: 100%;
+    box-shadow: 0 0 32px rgba(0,0,0,.18);
+  }
+</style>
+</head>
+<body>
+
+<div id="loader-shell">
+
+  <!-- ══ PAGE BAR ══ -->
+  <div id="page-bar">
+    <div class="brand"><i class="bi bi-window-stack"></i> Page Loader</div>
+    <div class="db-badge"><span class="dot"></span><span>uibuilder</span></div>
+    <div id="bar-sep"></div>
+    <div id="page-buttons" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <i class="bi bi-arrow-repeat spin" style="color:var(--muted);font-size:14px" id="loading-spin"></i>
+    </div>
+    <span id="page-count" style="display:none">0 pages</span>
+    <div id="bar-actions">
+      <button class="tb-btn" onclick="refreshPages()" title="Refresh file list"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+      <a href="index.html" class="tb-btn"><i class="bi bi-pencil-square"></i> Builder</a>
+    </div>
+  </div>
+
+  <!-- ══ DEVICE TOOLBAR ══ -->
+  <div id="device-bar">
+    <span id="active-label">—</span>
+    <span style="margin-left:auto;color:#555;font-size:10px">Viewport:</span>
+    <button class="dev-btn active" onclick="setDevice('100%','full')" id="dev-full"><i class="bi bi-display"></i> Full</button>
+    <button class="dev-btn" onclick="setDevice('1280px','desktop')" id="dev-desktop"><i class="bi bi-laptop"></i> 1280</button>
+    <button class="dev-btn" onclick="setDevice('768px','tablet')" id="dev-tablet"><i class="bi bi-tablet"></i> 768</button>
+    <button class="dev-btn" onclick="setDevice('390px','mobile')" id="dev-mobile"><i class="bi bi-phone"></i> 390</button>
+    <div style="width:1px;height:18px;background:var(--panel-border);margin:0 4px"></div>
+    <button class="dev-btn" onclick="openInNewTab()" title="Open in new tab"><i class="bi bi-box-arrow-up-right"></i></button>
+    <button class="dev-btn" onclick="closeRender()" title="Close page"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <!-- ══ LOADER STATE (empty / initial) ══ -->
+  <div id="loader-state">
+    <i class="bi bi-arrow-repeat spin" id="state-spin"></i>
+    <h4 id="state-title">Loading pages…</h4>
+    <p id="state-desc">Reading from WebDB (uibuilder)</p>
+  </div>
+
+  <!-- ══ RENDER AREA ══ -->
+  <div id="render-area">
+    <div id="frame-wrapper">
+      <iframe id="page-iframe"></iframe>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+<script>
+/* ════════════════════════════════════════════
+   JSON LOADER PAGE — reads WebDB, renders pages
+   ════════════════════════════════════════════ */
+
+const DB = 'uibuilder';
+let pages = [];      // [{name, content}]
+let activePage = null;
+let currentDevice = 'full';
+let lastBlobUrl = null;
+
+/* ── On load ── */
+window.addEventListener('DOMContentLoaded', () => {
+  loadPages();
+});
+
+/* ── Read all JSON files from WebDB ── */
+async function loadPages() {
+  setStateLoading('Loading pages…', 'Reading from WebDB (uibuilder)');
+  try {
+    await webdb.createDB(DB);
+    const files = await webdb.list(DB);
+    const jsonFiles = files.filter(f => f.type === 'file' && f.name.endsWith('.json'));
+
+    pages = [];
+    // Read each file
+    for (const f of jsonFiles) {
+      try {
+        const rec = await webdb.read(`${DB}/${f.name}`);
+        if (rec && rec.content && rec.content.content && Array.isArray(rec.content.content)) {
+          pages.push({ name: f.name, data: rec.content, modified: f.modified });
+        }
+      } catch(e) {
+        console.warn('Skip', f.name, e);
+      }
+    }
+
+    renderPageButtons();
+
+    if (pages.length === 0) {
+      setStateEmpty();
+    } else {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetPage = urlParams.get('page');
+      if(targetPage && pages.find(p=>p.name === targetPage)){
+        loadPageUI(targetPage);
+      } else {
+        setStateHidden();
+      }
+    }
+  } catch (e) {
+    setStateError('Cannot open WebDB', e.message);
+  }
+}
+
+async function refreshPages() {
+  closeRender();
+  await loadPages();
+  toast('Refreshed', 'success');
+}
+
+/* ── Render the pill buttons in the bar ── */
+function renderPageButtons() {
+  const container = document.getElementById('page-buttons');
+  document.getElementById('loading-spin').remove?.() || (document.getElementById('loading-spin') && (document.getElementById('loading-spin').style.display='none'));
+  const spin = document.getElementById('loading-spin');
+  if (spin) spin.style.display = 'none';
+
+  if (!pages.length) {
+    container.innerHTML = '<span style="font-size:12px;color:var(--muted)">No saved pages</span>';
+    document.getElementById('page-count').style.display = 'none';
+    return;
+  }
+
+  container.innerHTML = '';
+  pages.sort((a,b) => (b.modified||0) - (a.modified||0)).forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (activePage === p.name ? ' active' : '');
+    btn.dataset.name = p.name;
+    const icon = detectPageIcon(p.data);
+    btn.innerHTML = `<i class="bi ${icon}"></i> ${escName(p.name)}`;
+    btn.title = `Load: ${p.name}\nComponents: ${countComponents(p.data.content)}`;
+    btn.addEventListener('click', () => loadPageUI(p.name));
+    container.appendChild(btn);
+  });
+
+  const cnt = document.getElementById('page-count');
+  cnt.textContent = pages.length + ' page' + (pages.length !== 1 ? 's' : '');
+  cnt.style.display = '';
+}
+
+/* ── Load & render a page into the iframe ── */
+function loadPageUI(name) {
+  const page = pages.find(p => p.name === name);
+  if (!page) { toast('Page not found', 'error'); return; }
+
+  activePage = name;
+
+  // Update button states
+  document.querySelectorAll('.page-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.name === name);
+  });
+
+  // Build the HTML
+  const html = generatePreviewHTML(page.data.content || [], page.data.meta || {});
+
+  // Put in iframe
+  const iframe = document.getElementById('page-iframe');
+  iframe.srcdoc = html;
+
+  // Show render area
+  document.getElementById('loader-state').style.display = 'none';
+  document.getElementById('render-area').style.display = 'block';
+  document.getElementById('device-bar').classList.add('visible');
+
+  // Set active label in device bar
+  const compCount = countComponents(page.data.content);
+  document.getElementById('active-label').textContent =
+    `${name}  ·  ${compCount} component${compCount !== 1 ? 's' : ''}`;
+
+  // Apply current device width
+  applyDeviceWidth();
+
+  toast(`Loaded: ${name}`, 'success');
+}
+
+/* ── Close render, back to page list ── */
+function closeRender() {
+  activePage = null;
+  document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('render-area').style.display = 'none';
+  document.getElementById('device-bar').classList.remove('visible');
+  document.getElementById('loader-state').style.display = '';
+  if (pages.length) {
+    setStateWaiting();
+  } else {
+    setStateEmpty();
+  }
+}
+
+/* ── Device width switching ── */
+function setDevice(width, id) {
+  currentDevice = id;
+  document.querySelectorAll('.dev-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('dev-' + id);
+  if (btn) btn.classList.add('active');
+  applyDeviceWidth();
+}
+
+function applyDeviceWidth() {
+  const iframe = document.getElementById('page-iframe');
+  const wrapper = document.getElementById('frame-wrapper');
+  const w = currentDevice === 'full'    ? '100%'   :
+            currentDevice === 'desktop' ? '1280px' :
+            currentDevice === 'tablet'  ? '768px'  :
+            currentDevice === 'mobile'  ? '390px'  : '100%';
+
+  if (currentDevice === 'full') {
+    iframe.style.width = '100%';
+    wrapper.style.background = '#fff';
+    iframe.style.boxShadow = 'none';
+    iframe.style.minHeight = '100%';
+  } else {
+    iframe.style.width = w;
+    wrapper.style.background = '#e8eaf0';
+    iframe.style.boxShadow = '0 0 32px rgba(0,0,0,.18)';
+    iframe.style.minHeight = '100vh';
+  }
+}
+
+/* ── Open current page in new tab ── */
+function openInNewTab() {
+  if (!activePage) return;
+  const page = pages.find(p => p.name === activePage);
+  if (!page) return;
+  const html = generatePreviewHTML(page.data.content || [], page.data.meta || {});
+  const blob = new Blob([html], { type: 'text/html' });
+  if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+  lastBlobUrl = URL.createObjectURL(blob);
+  window.open(lastBlobUrl, '_blank');
+}
+
+/* ── State helpers ── */
+function setStateLoading(title, desc) {
+  const s = document.getElementById('loader-state');
+  s.style.display = '';
+  document.getElementById('state-spin').style.display = '';
+  document.getElementById('state-title').textContent = title;
+  document.getElementById('state-desc').textContent = desc;
+}
+
+function setStateHidden() {
+  // Just hide the spinner, keep state box hidden while no page selected
+  setStateWaiting();
+}
+
+function setStateWaiting() {
+  const s = document.getElementById('loader-state');
+  s.style.display = '';
+  document.getElementById('state-spin').className = 'bi bi-cursor-text';
+  document.getElementById('state-spin').style.fontSize = '48px';
+  document.getElementById('state-spin').style.color = 'var(--panel-border)';
+  document.getElementById('state-title').textContent = 'Select a page above';
+  document.getElementById('state-desc').innerHTML =
+    `Click any page button to render it here as a full UI.<br>
+     <span style="font-size:11px">Use the device buttons (bottom) to preview at different screen sizes.</span>`;
+}
+
+function setStateEmpty() {
+  const s = document.getElementById('loader-state');
+  s.style.display = '';
+  document.getElementById('state-spin').className = 'bi bi-inbox';
+  document.getElementById('state-spin').style.fontSize = '48px';
+  document.getElementById('state-spin').style.color = 'var(--panel-border)';
+  document.getElementById('state-title').textContent = 'No saved pages found';
+  document.getElementById('state-desc').innerHTML =
+    `Use the <a href="index.html" class="hint-link"><i class="bi bi-pencil-square"></i> Builder</a> to create and save JSON pages.<br>
+     They'll appear here automatically.`;
+}
+
+function setStateError(title, desc) {
+  const s = document.getElementById('loader-state');
+  s.style.display = '';
+  document.getElementById('state-spin').className = 'bi bi-exclamation-triangle';
+  document.getElementById('state-spin').style.fontSize = '48px';
+  document.getElementById('state-spin').style.color = 'var(--danger)';
+  document.getElementById('state-title').textContent = title;
+  document.getElementById('state-desc').textContent = desc;
+}
+
+/* ── Helpers ── */
+function escName(n) {
+  return n.replace('.json','').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+}
+
+function countComponents(content, n=0) {
+  if (!Array.isArray(content)) return n;
+  content.forEach(b => {
+    n++;
+    if (b.children) n = countComponents(b.children, n);
+  });
+  return n;
+}
+
+function detectPageIcon(data) {
+  if (!data || !data.content) return 'bi-file-code';
+  const types = [];
+  function collect(arr) { arr.forEach(b => { types.push(b.type); if (b.children) collect(b.children); }); }
+  collect(data.content);
+  if (types.includes('navbar')) return 'bi-layout-text-sidebar-reverse';
+  if (types.includes('modal')) return 'bi-window-fullscreen';
+  if (types.includes('form')) return 'bi-ui-checks';
+  if (types.includes('table') || types.includes('data-table')) return 'bi-table';
+  if (types.includes('card')) return 'bi-card-heading';
+  if (types.includes('jumbotron')) return 'bi-arrows-fullscreen';
+  return 'bi-file-earmark-code';
+}
+
+/* ── Toast (uses shared function from script.js) ── */
+// toast() is already defined in script.js
+
+/* ── Prevent script.js init from crashing on missing builder elements ── */
+// script.js calls renderPalette(), renderAll(), initDB() at the bottom.
+// renderAll() -> renderCanvas() will fail because #canvas doesn't exist here.
+// We guard those calls by overriding before script.js init runs... but since
+// script.js is already loaded above, we patch after the fact here:
+(function patchBuilderFns() {
+  // These are builder-only functions; make them no-ops in loader context
+  const safeNoop = () => {};
+  if (typeof renderCanvas !== 'undefined') {
+    // renderAll is called by script.js init — patch it
+    window.renderAll_orig = window.renderAll;
+    window.renderAll = safeNoop;
+  }
+})();
+
+</script>
+</body>
+</html>
