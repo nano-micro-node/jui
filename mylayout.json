@@ -1,0 +1,202 @@
+{
+  "desktop": {
+    "gap": 5,
+    "padding": 10,
+    "items": [
+      {
+        "id": "box_1",
+        "text": "Main Control Panel (Span 6)",
+        "colSpan": 12,
+        "height": "42px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_3",
+        "text": "Sensor Node 1 (Span 4)",
+        "colSpan": 4,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_4",
+        "text": "Sensor Node 2 (Span 4)",
+        "colSpan": 4,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_5",
+        "text": "Device Status (Span 4)",
+        "colSpan": 4,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_2",
+        "text": "System Switches (Span 6)",
+        "colSpan": 12,
+        "height": "180px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068279841",
+        "text": "New Widget",
+        "colSpan": 2,
+        "height": "119px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068283813",
+        "text": "New Widget",
+        "colSpan": 2,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068288052",
+        "text": "New Widget",
+        "colSpan": 8,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068351256",
+        "text": "test",
+        "colSpan": 12,
+        "height": "120px",
+        "bg": "#ffffff"
+      }
+    ]
+  },
+  "tablet": {
+    "gap": 8,
+    "padding": 7,
+    "items": [
+      {
+        "id": "box_1",
+        "text": "Main Control Panel (Span 8)",
+        "colSpan": 8,
+        "height": "37px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_2",
+        "text": "System Switches (Span 8)",
+        "colSpan": 2,
+        "height": "119px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_3",
+        "text": "Sensor Node 1 (Span 4)",
+        "colSpan": 4,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_4",
+        "text": "Sensor Node 2 (Span 4)",
+        "colSpan": 2,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_5",
+        "text": "Device Status (Span 8)",
+        "colSpan": 8,
+        "height": "89px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068644386",
+        "text": "tab",
+        "colSpan": 4,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068657194",
+        "text": "tab 12",
+        "colSpan": 8,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068667981",
+        "text": "tab 2",
+        "colSpan": 2,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068671857",
+        "text": "tab 2",
+        "colSpan": 2,
+        "height": "120px",
+        "bg": "#ffffff"
+      }
+    ]
+  },
+  "mobile": {
+    "gap": 4,
+    "padding": 4,
+    "items": [
+      {
+        "id": "box_1",
+        "text": "Main Panel (Span 4)",
+        "colSpan": 4,
+        "height": "37px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_2",
+        "text": "Switches (Span 4)",
+        "colSpan": 2,
+        "height": "140px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_3",
+        "text": "Node 1 (Span 4)",
+        "colSpan": 1,
+        "height": "137px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_4",
+        "text": "Node 2 (Span 4)",
+        "colSpan": 1,
+        "height": "135px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_5",
+        "text": "Status (Span 4)",
+        "colSpan": 1,
+        "height": "119px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068416105",
+        "text": "test",
+        "colSpan": 3,
+        "height": "120px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068449671",
+        "text": "mobile 12",
+        "colSpan": 2,
+        "height": "122px",
+        "bg": "#ffffff"
+      },
+      {
+        "id": "box_1785068458151",
+        "text": "mobile 4",
+        "colSpan": 2,
+        "height": "120px",
+        "bg": "#ffffff"
+      }
+    ]
+  }
+}

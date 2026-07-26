@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Full-Screen Integrated Sidebar Dashboard UI</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --sidebar-bg: #0f172a;
+      --sidebar-text: #94a3b8;
+      --sidebar-text-active: #ffffff;
+      --sidebar-hover: #1e293b;
+      --sidebar-active-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      --panel-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --primary: #3b82f6;
+    }
+
+    * { 
+      box-sizing: border-box; 
+      scrollbar-width: none; 
+    }
+
+    *::-webkit-scrollbar {
+      display: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+    }
+
+    /* FULL-SCREEN APP WRAPPER */
+    #app-wrapper {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* MODERN SIDEBAR STYLES */
+    .sidebar {
+      width: 260px;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+      z-index: 900;
+      flex-shrink: 0;
+      height: 100%;
+      overflow-y: auto;
+      box-shadow: 4px 0 25px rgba(0, 0, 0, 0.08);
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .sidebar.collapsed {
+      width: 70px;
+    }
+
+    .sidebar-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      min-height: 68px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo {
+      font-weight: 700;
+      font-size: 16px;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.3px;
+    }
+
+    .sidebar-logo svg {
+      width: 24px;
+      height: 24px;
+      fill: var(--primary);
+      flex-shrink: 0;
+    }
+
+    /* HIDE TEXT ONLY WHEN COLLAPSED AND NOT IN MOBILE DRAWER MODE */
+    .sidebar.collapsed:not(.mobile-open) .sidebar-logo span,
+    .sidebar.collapsed:not(.mobile-open) .nav-text,
+    .sidebar.collapsed:not(.mobile-open) .profile-info,
+    .sidebar.collapsed:not(.mobile-open) .section-title,
+    .sidebar.collapsed:not(.mobile-open) .sidebar-controls-group {
+      display: none;
+    }
+
+    .sidebar.collapsed:not(.mobile-open) .sidebar-logo {
+      justify-content: center;
+      padding: 0;
+      width: 100%;
+    }
+
+    /* REFINED TOGGLE BUTTON STYLES */
+    .toggle-sidebar-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .toggle-sidebar-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: scale(1.05);
+    }
+
+    .toggle-sidebar-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 12px;
+      margin: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .nav-item:hover {
+      background: var(--sidebar-hover);
+      color: var(--sidebar-text-active);
+    }
+
+    .nav-item.active {
+      background: var(--sidebar-active-gradient);
+      color: var(--sidebar-text-active);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .nav-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .sidebar.collapsed:not(.mobile-open) .sidebar-header .toggle-sidebar-btn {
+      margin: 0 auto;
+    }
+    
+    .sidebar.collapsed:not(.mobile-open) .sidebar-footer {
+      justify-content: center;
+      padding: 15px 0;
+    }
+
+    /* SIDEBAR CONTROLS SECTION */
+    .sidebar-controls-section {
+      padding: 15px 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(0, 0, 0, 0.2);
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 8px;
+      padding-left: 4px;
+      font-weight: 700;
+    }
+
+    .sidebar-controls-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sidebar-btn {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--sidebar-text);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .sidebar-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; flex-shrink: 0; }
+    .sidebar-btn:hover { background: var(--sidebar-hover); color: #fff; border-color: rgba(255, 255, 255, 0.15); }
+    .sidebar-btn.primary { background: var(--primary); color: #fff; border-color: transparent; }
+    .sidebar-btn.primary:hover { background: #2563eb; }
+    .sidebar-btn.danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+    .sidebar-btn.danger:hover { background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+
+    .device-indicator {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 8px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sidebar-footer {
+      padding: 15px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .profile-img {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #334155;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+
+    .profile-info {
+      font-size: 13px;
+      overflow: hidden;
+    }
+    .profile-name { font-weight: 600; color: #fff; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+    .profile-role { font-size: 11px; color: var(--sidebar-text); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+
+    /* CENTER DASHBOARD CONTENT */
+    #dashboard-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-width: 0;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    /* TOP MOBILE BAR */
+    #mobile-top-bar {
+      display: none;
+      padding: 10px 16px;
+      background: var(--sidebar-bg);
+      color: white;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 56px;
+      flex-shrink: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    #mobile-top-bar strong {
+      font-size: 15px;
+      letter-spacing: -0.2px;
+    }
+
+    /* RESPONSIVE GRID CONTAINER */
+    #app-container {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-auto-rows: minmax(2px, auto);
+      grid-auto-flow: dense;
+      padding: 5px;
+      width: 100%;
+      transition: gap 0.2s ease;
+    }
+
+    body.device-tablet #app-container {
+      grid-template-columns: repeat(8, 1fr);
+    }
+    body.device-mobile #app-container {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .dynamic-box {
+      position: relative;
+      overflow: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1e293b;
+      font-weight: 600;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      background-color: white;
+      min-height: 2px;
+      box-sizing: border-box;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .dynamic-box:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    }
+
+    .dynamic-box:active { cursor: grabbing; }
+    .locked .dynamic-box { cursor: default; }
+
+    .dynamic-box.dragging {
+      position: fixed;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.85;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      transform: scale(1.02) rotate(-1deg);
+    }
+
+    /* OVERFLOW ARROW INDICATOR (BOTTOM RIGHT) */
+    .overflow-arrow {
+      position: absolute;
+      bottom: 6px;
+      right: 8px;
+      font-size: 10px;
+      background: rgba(0, 0, 0, 0.08);
+      color: #475569;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: none;
+      pointer-events: none;
+      z-index: 15;
+      font-weight: bold;
+    }
+    .dynamic-box.has-overflow .overflow-arrow {
+      display: block;
+    }
+
+    /* RESIZE HANDLES */
+    .resize-handle-right {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 12px;
+      cursor: ew-resize; z-index: 20; background: transparent;
+    }
+    .resize-handle-right:hover { background: rgba(59, 130, 246, 0.15); }
+
+    .resize-handle-bottom {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+      cursor: ns-resize; z-index: 20; background: transparent;
+    }
+    .resize-handle-bottom:hover { background: rgba(59, 130, 246, 0.15); }
+
+    .locked .resize-handle-right, .locked .resize-handle-bottom { display: none; }
+
+    .placeholder {
+      border: 2px dashed var(--primary);
+      background: rgba(59, 130, 246, 0.05);
+      border-radius: 12px;
+      box-sizing: border-box;
+      transition: all 0.2s;
+    }
+
+    .edit-btn {
+      position: absolute; top: 8px; left: 8px; font-size: 11px; font-weight: 500;
+      padding: 3px 8px; cursor: pointer; background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--border-color); border-radius: 6px; z-index: 10;
+      color: #475569; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      transition: all 0.2s;
+    }
+    .edit-btn:hover { background: #fff; color: #1e293b; border-color: #cbd5e1; }
+    
+    .content-text { text-align: center; word-break: break-word; width: 100%; font-size: 14px; }
+    .is-dragging * { user-select: none !important; }
+
+    /* MODALS */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); z-index: 99999;
+    }
+    .modal {
+      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: white; padding: 24px; border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      z-index: 100000; width: 340px; max-width: 90vw; border: 1px solid var(--border-color);
+    }
+    .modal h3 { margin-top: 0; font-size: 18px; color: #0f172a; margin-bottom: 16px; font-weight: 600; }
+    .form-group { margin-bottom: 16px; display: flex; flex-direction: column; }
+    .form-group label { font-size: 12px; margin-bottom: 6px; font-weight: 600; color: #475569; }
+    .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="color"], .form-group select { padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; width: 100%; outline: none; transition: border-color 0.2s; }
+    .form-group input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--primary); }
+    .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+    .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .modal-actions-right { display: flex; gap: 8px; }
+    .modal button { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border-color); background: #f8fafc; color: #334155; transition: all 0.2s; }
+    .modal button:hover { background: #f1f5f9; }
+    .modal button.primary { background: var(--primary); color: white; border-color: transparent; }
+    .modal button.primary:hover { background: #2563eb; }
+    .modal button.danger { background: #fef2f2; color: #dc2626; border-color: #fee2e2; }
+    .modal button.danger:hover { background: #fee2e2; }
+
+    /* GLOBAL FLOATING TOOLTIP FOR COLLAPSED SIDEBAR */
+    #global-tooltip {
+      position: fixed;
+      display: none;
+      background: #1e293b;
+      color: #ffffff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 999999;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* MOBILE RESPONSIVE OVERLAYS */
+    @media (max-width: 768px) {
+      #mobile-top-bar { display: flex; }
+      #app-wrapper { flex-direction: column; height: 100vh; }
+      .sidebar {
+        position: fixed;
+        top: 56px;
+        bottom: 0;
+        width: 260px !important;
+        height: calc(100vh - 56px);
+        z-index: 1100;
+      }
+      #left-sidebar { left: 0; transform: translateX(-100%); }
+      #left-sidebar.mobile-open { transform: translateX(0); }
+
+      #right-sidebar { right: 0; transform: translateX(100%); }
+      #right-sidebar.mobile-open { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body class="device-desktop">
+
+  <!-- GLOBAL TOOLTIP CONTAINER -->
+  <div id="global-tooltip"></div>
+
+  <!-- MOBILE TOP BAR -->
+  <div id="mobile-top-bar">
+    <button class="toggle-sidebar-btn" onclick="toggleLeftSidebar()" title="Toggle Menu">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+    <strong>TTS IOT</strong>
+    <button class="toggle-sidebar-btn" onclick="toggleRightSidebar()" title="Toggle Tools">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+  </div>
+
+  <div id="app-wrapper">
+    <!-- LEFT SIDEBAR (Collapsed on load) -->
+    <aside id="left-sidebar" class="sidebar collapsed">
+      <div class="sidebar-header">
+        <span class="sidebar-logo">
+          <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span>TTS IOT</span>
+        </span>
+        <button class="toggle-sidebar-btn" onclick="toggleLeftSidebar()" title="Expand Menu">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+      
+      <ul class="sidebar-nav">
+        <li><a href="#" class="nav-item active" data-tooltip="Dashboard"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg></span><span class="nav-text">Dashboard</span></a></li>
+        <li><a href="#" class="nav-item" data-tooltip="Users"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span><span class="nav-text">Users</span></a></li>
+        <li><a href="#" class="nav-item" data-tooltip="Messages"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span><span class="nav-text">Messages</span></a></li>
+        <li><a href="#" class="nav-item" data-tooltip="Analytics"><span class="nav-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span><span class="nav-text">Analytics</span></a></li>
+        <li><a href="#" class="nav-item" data-tooltip="File Manager"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></span><span class="nav-text">File Manager</span></a></li>
+        <li><a href="#" class="nav-item" data-tooltip="Orders"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg></span><span class="nav-text">Orders</span></a></li>
+      </ul>
+
+      <!-- CONTROLS SECTION -->
+      <div class="sidebar-controls-section">
+        <div class="section-title">Manager</div>
+        <div id="device-badge" class="device-indicator">🖥️ Desk</div>
+        <div class="sidebar-controls-group">
+          <button onclick="openAddModal()" class="sidebar-btn primary" data-tooltip="Add Widget"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span>Add Widget</span></button>
+          <button onclick="openLayoutSettingsModal()" class="sidebar-btn" data-tooltip="Layout Spacing"><svg viewBox="0 0 24 24"><path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-8V3M1 14h6m2-6h6m2 8h6"></path></svg><span>Layout Spacing</span></button>
+          <button onclick="toggleLock()" id="lock-btn" class="sidebar-btn" data-tooltip="Lock Layout"><svg viewBox="0 0 24 24" id="lock-svg-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span id="lock-text">Lock Layout</span></button>
+          <button onclick="exportJSON()" class="sidebar-btn" data-tooltip="Export JSON"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span>Export JSON</span></button>
+          <button onclick="document.getElementById('import-file').click()" class="sidebar-btn" data-tooltip="Import JSON"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><span>Import JSON</span></button>
+          <input type="file" id="import-file" style="display: none" accept=".json" onchange="importJSON(event)">
+          <button onclick="clearStorage()" class="sidebar-btn danger" data-tooltip="Reset Layouts"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg><span>Reset Layouts</span></button>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" class="profile-img" alt="User">
+        <div class="profile-info">
+          <div class="profile-name">Prem Shahi</div>
+          <div class="profile-role">Web Designer</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER DASHBOARD AREA -->
+    <main id="dashboard-main">
+      <div id="app-container"></div>
+    </main>
+
+    <!-- RIGHT SIDEBAR (Collapsed on load) -->
+    <aside id="right-sidebar" class="sidebar collapsed">
+      <div class="sidebar-header">
+        <button class="toggle-sidebar-btn" onclick="toggleRightSidebar()" title="Collapse Tools">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <span class="sidebar-logo"><span>Tools</span></span>
+      </div>
+      <ul class="sidebar-nav">
+        <li><a href="#" class="nav-item" data-tooltip="Notifications"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></span><span class="nav-text">Notifications (3)</span></a></li>
+        <li><a href="#" class="nav-item" data-tooltip="Dark Theme"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span><span class="nav-text">Dark Theme</span></a></li>
+        <li><a href="#" class="nav-item" data-tooltip="Security Log"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span><span class="nav-text">Security Log</span></a></li>
+        <li><a href="#" class="nav-item" data-tooltip="Cache Clear"><span class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span><span class="nav-text">Cache Clear</span></a></li>
+      </ul>
+    </aside>
+  </div>
+
+  <!-- Modals -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeAllModals()"></div>
+
+  <div class="modal" id="edit-modal">
+    <h3>Edit Widget</h3>
+    <div class="form-group"><label>Text Content</label><input type="text" id="edit-text"></div>
+    <div class="form-group"><label id="colspan-label">Width (Column Span)</label><input type="number" id="edit-colspan" min="1" max="12"></div>
+    <div class="form-group"><label>Background Color</label><input type="color" id="edit-color"></div>
+    <div class="modal-actions">
+      <button onclick="deleteCurrentWidget()" class="danger">Remove</button>
+      <div class="modal-actions-right">
+        <button onclick="closeAllModals()">Cancel</button>
+        <button onclick="saveEdit()" class="primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="add-modal">
+    <h3>Add New Widget</h3>
+    <div class="form-group"><label>Widget Title</label><input type="text" id="new-text" value="New Widget"></div>
+    <div class="form-group"><label id="new-colspan-label">Width (Column Span)</label><input type="number" id="new-colspan" min="1" max="12" value="4"></div>
+    <div class="form-group"><label>Background Color</label><input type="color" id="new-color" value="#ffffff"></div>
+    <div class="modal-actions" style="justify-content: flex-end;">
+      <div class="modal-actions-right">
+        <button onclick="closeAllModals()">Cancel</button>
+        <button onclick="addWidget()" class="primary">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYOUT SPACING SETTINGS MODAL -->
+  <div class="modal" id="layout-settings-modal">
+    <h3>Layout Spacing Settings (<span id="settings-device-name">Desk</span>)</h3>
+    <div class="form-group">
+      <label>Space Between Divs (Grid Gap: <span id="gap-val">20</span>px)</label>
+      <input type="range" id="setting-gap" min="0" max="50" value="20" oninput="updateGapPreview(this.value)">
+    </div>
+    <div class="form-group">
+      <label>Widget Inner Padding (<span id="padding-val">18</span>px)</label>
+      <input type="range" id="setting-padding" min="0" max="40" value="18" oninput="updatePaddingPreview(this.value)">
+    </div>
+    <div class="modal-actions" style="justify-content: flex-end;">
+      <div class="modal-actions-right">
+        <button onclick="closeAllModals()">Cancel</button>
+        <button onclick="saveLayoutSettings()" class="primary">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // GLOBAL TOOLTIP HOVER HANDLER
+    const globalTooltip = document.getElementById('global-tooltip');
+    document.addEventListener('mouseover', (e) => {
+      const target = e.target.closest('[data-tooltip]');
+      const sidebar = target ? target.closest('.sidebar') : null;
+      if (target && sidebar && sidebar.classList.contains('collapsed') && window.innerWidth > 768) {
+        const text = target.getAttribute('data-tooltip');
+        if (text) {
+          globalTooltip.innerText = text;
+          globalTooltip.style.display = 'block';
+          const rect = target.getBoundingClientRect();
+          globalTooltip.style.left = (rect.right + 12) + 'px';
+          globalTooltip.style.top = (rect.top + (rect.height / 2)) + 'px';
+          globalTooltip.style.transform = 'translateY(-50%)';
+        }
+      }
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      const target = e.target.closest('[data-tooltip]');
+      if (target) {
+        globalTooltip.style.display = 'none';
+      }
+    });
+
+    function toggleLeftSidebar() {
+      const sidebar = document.getElementById('left-sidebar');
+      if (window.innerWidth <= 768) {
+        sidebar.classList.toggle('mobile-open');
+      } else {
+        sidebar.classList.toggle('collapsed');
+      }
+    }
+
+    function toggleRightSidebar() {
+      const sidebar = document.getElementById('right-sidebar');
+      if (window.innerWidth <= 768) {
+        sidebar.classList.toggle('mobile-open');
+      } else {
+        sidebar.classList.toggle('collapsed');
+      }
+    }
+
+    const defaultMultiLayouts = {
+      desktop: {
+        gap: 20,
+        padding: 18,
+        items: [
+          { id: "box_1", text: "Main Control Panel (Span 6)", colSpan: 6, height: "180px", bg: "#ffffff" },
+          { id: "box_2", text: "System Switches (Span 6)", colSpan: 6, height: "180px", bg: "#ffffff" },
+          { id: "box_3", text: "Sensor Node 1 (Span 4)", colSpan: 4, height: "120px", bg: "#ffffff" },
+          { id: "box_4", text: "Sensor Node 2 (Span 4)", colSpan: 4, height: "120px", bg: "#ffffff" },
+          { id: "box_5", text: "Device Status (Span 4)", colSpan: 4, height: "120px", bg: "#ffffff" }
+        ]
+      },
+      tablet: {
+        gap: 16,
+        padding: 16,
+        items: [
+          { id: "box_1", text: "Main Control Panel (Span 8)", colSpan: 8, height: "160px", bg: "#ffffff" },
+          { id: "box_2", text: "System Switches (Span 8)", colSpan: 8, height: "160px", bg: "#ffffff" },
+          { id: "box_3", text: "Sensor Node 1 (Span 4)", colSpan: 4, height: "120px", bg: "#ffffff" },
+          { id: "box_4", text: "Sensor Node 2 (Span 4)", colSpan: 4, height: "120px", bg: "#ffffff" },
+          { id: "box_5", text: "Device Status (Span 8)", colSpan: 8, height: "160px", bg: "#ffffff" }
+        ]
+      },
+      mobile: {
+        gap: 12,
+        padding: 12,
+        items: [
+          { id: "box_1", text: "Main Panel (Span 4)", colSpan: 4, height: "140px", bg: "#ffffff" },
+          { id: "box_2", text: "Switches (Span 4)", colSpan: 4, height: "140px", bg: "#ffffff" },
+          { id: "box_3", text: "Node 1 (Span 4)", colSpan: 4, height: "100px", bg: "#ffffff" },
+          { id: "box_4", text: "Node 2 (Span 4)", colSpan: 4, height: "100px", bg: "#ffffff" },
+          { id: "box_5", text: "Status (Span 4)", colSpan: 4, height: "100px", bg: "#ffffff" }
+        ]
+      }
+    };
+
+    const STORAGE_KEY = "fullscreen_sidebar_layouts_v8";
+    let rawStored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    let layouts = JSON.parse(JSON.stringify(defaultMultiLayouts));
+
+    if (rawStored) {
+      ['desktop', 'tablet', 'mobile'].forEach(dev => {
+        if (rawStored[dev]) {
+          if (Array.isArray(rawStored[dev])) {
+            layouts[dev].items = rawStored[dev];
+          } else {
+            layouts[dev] = {
+              gap: rawStored[dev].gap !== undefined ? rawStored[dev].gap : defaultMultiLayouts[dev].gap,
+              padding: rawStored[dev].padding !== undefined ? rawStored[dev].padding : defaultMultiLayouts[dev].padding,
+              items: rawStored[dev].items || defaultMultiLayouts[dev].items
+            };
+          }
+        }
+      });
+    }
+
+    let isLocked = false;
+    const container = document.getElementById("app-container");
+
+    function getDeviceMode() {
+      const width = window.innerWidth;
+      if (width <= 640) return 'mobile';
+      if (width <= 1024) return 'tablet';
+      return 'desktop';
+    }
+
+    let activeDevice = getDeviceMode();
+
+    let isDragging = false;
+    let dragEl = null;
+    let placeholder = null;
+    let offsetX, offsetY;
+
+    let resizingRight = null;
+    let resizingBottom = null;
+    let resizeStartX = 0, resizeStartY = 0;
+    let initialColSpan = 4, initialHeight = 100;
+
+    function getMaxCols() {
+      if (activeDevice === 'mobile') return 4;
+      if (activeDevice === 'tablet') return 8;
+      return 12;
+    }
+
+    function getCoords(e) {
+      if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    function checkOverflowStates() {
+      const boxes = document.querySelectorAll('.dynamic-box');
+      boxes.forEach(box => {
+        if (box.scrollHeight > box.clientHeight || box.scrollWidth > box.clientWidth) {
+          box.classList.add('has-overflow');
+        } else {
+          box.classList.remove('has-overflow');
+        }
+      });
+    }
+
+    function handleDragStart(e) {
+      if (isLocked || e.target.classList.contains('edit-btn') || e.target.classList.contains('resize-handle-right') || e.target.classList.contains('resize-handle-bottom')) return;
+
+      const el = e.target.closest('.dynamic-box');
+      if (!el) return;
+
+      const coords = getCoords(e);
+      const rect = el.getBoundingClientRect();
+
+      isDragging = true;
+      dragEl = el;
+      offsetX = coords.x - rect.left;
+      offsetY = coords.y - rect.top;
+
+      placeholder = document.createElement('div');
+      placeholder.className = 'placeholder';
+      placeholder.style.height = getComputedStyle(el).height;
+      
+      const currentList = layouts[activeDevice].items;
+      const dataItem = currentList.find(i => i.id === el.id);
+      const span = Math.min(dataItem ? dataItem.colSpan : 4, getMaxCols());
+      placeholder.style.gridColumn = `span ${span}`;
+
+      el.parentNode.insertBefore(placeholder, el);
+
+      dragEl.classList.add('dragging');
+      dragEl.style.left = (coords.x - offsetX) + 'px';
+      dragEl.style.top = (coords.y - offsetY) + 'px';
+
+      document.body.classList.add('is-dragging');
+    }
+
+    function handleDragMove(e) {
+      if (!isDragging || !dragEl || isLocked) return;
+      e.preventDefault(); 
+      
+      const coords = getCoords(e);
+      dragEl.style.left = (coords.x - offsetX) + 'px';
+      dragEl.style.top = (coords.y - offsetY) + 'px';
+
+      const hoveredEl = document.elementFromPoint(coords.x, coords.y);
+      if (!hoveredEl) return;
+
+      const targetBox = hoveredEl.closest('.dynamic-box:not(.dragging)');
+      if (targetBox) {
+        const targetRect = targetBox.getBoundingClientRect();
+        if (coords.y < targetRect.top + (targetRect.height / 2)) {
+          targetBox.parentNode.insertBefore(placeholder, targetBox);
+        } else {
+          targetBox.parentNode.insertBefore(placeholder, targetBox.nextSibling);
+        }
+      } else if (hoveredEl.id === 'app-container' || hoveredEl.tagName === 'MAIN') {
+        container.appendChild(placeholder);
+      }
+    }
+
+    function handleDragEnd() {
+      if (isDragging && dragEl && placeholder) {
+        placeholder.parentNode.insertBefore(dragEl, placeholder);
+        placeholder.remove();
+        
+        dragEl.classList.remove('dragging');
+        dragEl.style.left = '';
+        dragEl.style.top = '';
+        
+        isDragging = false;
+        dragEl = null;
+        placeholder = null;
+        document.body.classList.remove('is-dragging');
+
+        saveLayout();
+      }
+    }
+
+    function initResize(e, elId, direction) {
+      if (isLocked) return;
+      e.stopPropagation();
+      e.preventDefault();
+
+      const currentList = layouts[activeDevice].items;
+      const item = currentList.find(i => i.id === elId);
+      const el = document.getElementById(elId);
+      const coords = getCoords(e);
+
+      if (direction === 'right') {
+        resizingRight = item;
+        resizeStartX = coords.x;
+        initialColSpan = item.colSpan || 4;
+      } else if (direction === 'bottom') {
+        resizingBottom = item;
+        resizeStartY = coords.y;
+        initialHeight = parseInt(window.getComputedStyle(el).height) || 2;
+      }
+
+      document.addEventListener('mousemove', onResizeMove);
+      document.addEventListener('mouseup', onResizeEnd);
+      document.addEventListener('touchmove', onResizeMove, {passive: false});
+      document.addEventListener('touchend', onResizeEnd);
+    }
+
+    function onResizeMove(e) {
+      const coords = getCoords(e);
+      const maxCols = getMaxCols();
+      const currentGap = layouts[activeDevice].gap;
+
+      if (resizingRight) {
+        const dx = coords.x - resizeStartX;
+        const colWidth = (container.clientWidth - (currentGap * (maxCols - 1))) / maxCols;
+        const deltaCols = Math.round(dx / colWidth);
+        
+        let newSpan = Math.max(1, Math.min(maxCols, initialColSpan + deltaCols));
+        resizingRight.colSpan = newSpan;
+
+        const el = document.getElementById(resizingRight.id);
+        if (el) el.style.gridColumn = `span ${newSpan}`;
+      }
+
+      if (resizingBottom) {
+        const dy = coords.y - resizeStartY;
+        let newHeight = Math.max(2, initialHeight + dy);
+        resizingBottom.height = newHeight + 'px';
+
+        const el = document.getElementById(resizingBottom.id);
+        if (el) el.style.height = newHeight + 'px';
+      }
+      checkOverflowStates();
+    }
+
+    function onResizeEnd() {
+      if (resizingRight || resizingBottom) {
+        saveLayout();
+        renderUI();
+      }
+      resizingRight = null;
+      resizingBottom = null;
+
+      document.removeEventListener('mousemove', onResizeMove);
+      document.removeEventListener('mouseup', onResizeEnd);
+      document.removeEventListener('touchmove', onResizeMove);
+      document.removeEventListener('touchend', onResizeEnd);
+    }
+
+    container.addEventListener('mousedown', handleDragStart);
+    container.addEventListener('touchstart', handleDragStart, {passive: false});
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('touchmove', handleDragMove, {passive: false});
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchend', handleDragEnd);
+
+    let currentEditId = null;
+
+    window.openEditMenu = function(id) {
+      if (isLocked) return;
+      currentEditId = id;
+      const currentList = layouts[activeDevice].items;
+      const item = currentList.find(i => i.id === id);
+      
+      document.getElementById('edit-text').value = item.text;
+      document.getElementById('edit-colspan').value = Math.min(item.colSpan || 4, getMaxCols());
+      document.getElementById('edit-colspan').max = getMaxCols();
+      document.getElementById('colspan-label').innerText = `Width (Column Span: 1 - ${getMaxCols()})`;
+      document.getElementById('edit-color').value = item.bg;
+      
+      document.getElementById('modal-overlay').style.display = 'block';
+      document.getElementById('edit-modal').style.display = 'block';
+    }
+
+    window.openAddModal = function() {
+      const max = getMaxCols();
+      document.getElementById('new-colspan').max = max;
+      document.getElementById('new-colspan').value = Math.min(4, max);
+      document.getElementById('new-colspan-label').innerText = `Width (Column Span: 1 - ${max})`;
+
+      document.getElementById('modal-overlay').style.display = 'block';
+      document.getElementById('add-modal').style.display = 'block';
+    }
+
+    window.openLayoutSettingsModal = function() {
+      const currentLayout = layouts[activeDevice];
+      document.getElementById('settings-device-name').innerText = activeDevice.charAt(0).toUpperCase() + activeDevice.slice(1);
+      
+      const gapInput = document.getElementById('setting-gap');
+      const paddingInput = document.getElementById('setting-padding');
+      
+      gapInput.value = currentLayout.gap;
+      paddingInput.value = currentLayout.padding;
+      
+      document.getElementById('gap-val').innerText = currentLayout.gap;
+      document.getElementById('padding-val').innerText = currentLayout.padding;
+
+      document.getElementById('modal-overlay').style.display = 'block';
+      document.getElementById('layout-settings-modal').style.display = 'block';
+    }
+
+    window.updateGapPreview = function(val) {
+      document.getElementById('gap-val').innerText = val;
+      container.style.gap = val + 'px';
+    }
+
+    window.updatePaddingPreview = function(val) {
+      document.getElementById('padding-val').innerText = val;
+      document.querySelectorAll('.dynamic-box').forEach(box => {
+        box.style.padding = val + 'px';
+      });
+    }
+
+    window.saveLayoutSettings = function() {
+      layouts[activeDevice].gap = parseInt(document.getElementById('setting-gap').value) || 0;
+      layouts[activeDevice].padding = parseInt(document.getElementById('setting-padding').value) || 0;
+      
+      saveLayout();
+      renderUI();
+      closeAllModals();
+    }
+
+    window.closeAllModals = function() {
+      document.getElementById('modal-overlay').style.display = 'none';
+      document.getElementById('edit-modal').style.display = 'none';
+      document.getElementById('add-modal').style.display = 'none';
+      document.getElementById('layout-settings-modal').style.display = 'none';
+      currentEditId = null;
+      renderUI();
+    }
+
+    window.saveEdit = function() {
+      if (!currentEditId) return;
+      const currentList = layouts[activeDevice].items;
+      const item = currentList.find(i => i.id === currentEditId);
+      
+      item.text = document.getElementById('edit-text').value;
+      item.colSpan = Math.min(parseInt(document.getElementById('edit-colspan').value) || 1, getMaxCols());
+      item.bg = document.getElementById('edit-color').value;
+      
+      saveLayout();
+      renderUI();
+      closeAllModals();
+    }
+
+    window.deleteCurrentWidget = function() {
+      if (!currentEditId) return;
+      layouts[activeDevice].items = layouts[activeDevice].items.filter(i => i.id !== currentEditId);
+      saveLayout();
+      renderUI();
+      closeAllModals();
+    }
+
+    window.addWidget = function() {
+      const text = document.getElementById('new-text').value;
+      const colSpan = Math.min(parseInt(document.getElementById('new-colspan').value) || 4, getMaxCols());
+      const bg = document.getElementById('new-color').value;
+      const newId = 'box_' + Date.now();
+      
+      layouts[activeDevice].items.push({
+        id: newId,
+        text: text || "New Widget",
+        colSpan: colSpan,
+        height: "120px",
+        bg: bg
+      });
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+      renderUI();
+      closeAllModals();
+    }
+
+    window.toggleLock = function() {
+      isLocked = !isLocked;
+      document.body.classList.toggle('locked', isLocked);
+      const lockSvg = `<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="${isLocked ? 'M7 11V7a5 5 0 0 1 10 0v4' : 'M7 11V7a5 5 0 0 1 9.9-1'}"></path>`;
+      document.getElementById('lock-svg-icon').innerHTML = lockSvg;
+      document.getElementById('lock-text').innerText = isLocked ? "Unlock Layout" : "Lock Layout";
+      document.querySelectorAll('.edit-btn').forEach(btn => btn.style.display = isLocked ? 'none' : 'block');
+    }
+
+    window.exportJSON = function() {
+      saveLayout();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(layouts, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "fullscreen_dashboard_layouts.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    window.importJSON = function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed && parsed.desktop && parsed.tablet && parsed.mobile) {
+            layouts = parsed;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+            renderUI();
+          } else {
+            alert("Invalid Multi-Layout JSON format.");
+          }
+        } catch (err) {
+          alert("Error parsing JSON file.");
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function renderUI() {
+      container.innerHTML = "";
+      const currentLayout = layouts[activeDevice] || { gap: 20, padding: 18, items: [] };
+      const maxCols = getMaxCols();
+
+      container.style.gap = currentLayout.gap + 'px';
+
+      currentLayout.items.forEach(item => {
+        const el = document.createElement('div');
+        el.id = item.id;
+        el.className = "dynamic-box";
+        
+        const effectiveSpan = Math.min(item.colSpan || 4, maxCols);
+        el.style.gridColumn = `span ${effectiveSpan}`;
+        el.style.height = item.height;
+        el.style.backgroundColor = item.bg;
+        el.style.padding = currentLayout.padding + 'px';
+
+        el.innerHTML = `
+          <button class="edit-btn" style="display: ${isLocked ? 'none' : 'block'}" onclick="openEditMenu('${item.id}')">Configure</button>
+          <div class="content-text">${item.text}</div>
+          <div class="overflow-arrow">▼</div>
+          <div class="resize-handle-right" onmousedown="initResize(event, '${item.id}', 'right')" ontouchstart="initResize(event, '${item.id}', 'right')"></div>
+          <div class="resize-handle-bottom" onmousedown="initResize(event, '${item.id}', 'bottom')" ontouchstart="initResize(event, '${item.id}', 'bottom')"></div>
+        `;
+
+        container.appendChild(el);
+      });
+
+      setTimeout(checkOverflowStates, 50);
+    }
+
+    window.saveLayout = function() {
+      let newLayoutArray = [];
+      const boxes = document.querySelectorAll('#app-container > .dynamic-box');
+      const currentList = layouts[activeDevice].items;
+      
+      boxes.forEach(box => {
+        let existingData = currentList.find(d => d.id === box.id);
+        if (existingData) {
+          existingData.height = box.style.height;
+          newLayoutArray.push(existingData);
+        }
+      });
+      
+      layouts[activeDevice].items = newLayoutArray;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+    }
+
+    window.clearStorage = function() {
+      if (confirm("Reset all layouts & spacing back to defaults?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        layouts = JSON.parse(JSON.stringify(defaultMultiLayouts));
+        renderUI();
+      }
+    }
+
+    function checkDeviceChange() {
+      const newDevice = getDeviceMode();
+      if (newDevice !== activeDevice) {
+        saveLayout(); 
+        activeDevice = newDevice;
+        
+        document.body.className = isLocked ? 'locked' : '';
+        document.body.classList.add('device-' + activeDevice);
+        
+        const badge = document.getElementById('device-badge');
+        if (activeDevice === 'mobile') badge.innerText = "📱 Mobile";
+        else if (activeDevice === 'tablet') badge.innerText = "📊 Tab";
+        else badge.innerText = "🖥️ Desk";
+
+        renderUI();
+      }
+    }
+
+    document.body.classList.add('device-' + activeDevice);
+    const badge = document.getElementById('device-badge');
+    if (activeDevice === 'mobile') badge.innerText = "📱 Mobile";
+    else if (activeDevice === 'tablet') badge.innerText = "📊 Tab";
+    else badge.innerText = "🖥️ Desk";
+
+    window.addEventListener('resize', () => {
+      checkDeviceChange();
+      checkOverflowStates();
+    });
+    
+    renderUI();
+  </script>
+</body>
+</html>
