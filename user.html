@@ -1,0 +1,2440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full-Screen Integrated Dashboard - User Profiles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/@knadh/oat/oat.min.css">
+  <script src="https://unpkg.com/@knadh/oat/oat.min.js" defer></script>
+  <style>
+    /* ─── OAT Variable Overrides & FontAwesome Fixes ──────── */
+    :root {
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --radius-large: 14px;
+      --radius-medium: 8px;
+      --radius-small: 5px;
+      --sidebar-active-gradient: linear-gradient(135deg, var(--primary) 0%, var(--ring) 100%);
+      --panel-bg: var(--card);
+      --transition-smooth: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-icon i, .sidebar-btn i, .sidebar-logo i, .toggle-sidebar-btn i {
+      font-size: 15px;
+      width: 16px;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ─── Reset & Base ────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; scrollbar-width: none; }
+    *::-webkit-scrollbar { display: none; }
+
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; min-height: 100vh; height: 100vh;
+      overflow: hidden;
+      font-family: var(--font-sans);
+      background-color: var(--background);
+      color: var(--foreground);
+      -webkit-font-smoothing: antialiased;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+
+    /* ─── App Layout ──────────────────────────────────────── */
+    #app-wrapper {
+      display: flex;
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+      touch-action: pan-y;
+    }
+
+    /* ─── Sidebar Core ────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-width, 260px);
+      background: var(--sidebar-bg, var(--card));
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: width var(--transition-smooth), transform 0.3s ease;
+      z-index: 900;
+      position: relative;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+    #right-sidebar {
+      border-right: none;
+      border-left: 1px solid var(--border);
+    }
+    .sidebar.collapsed { width: 56px !important; }
+
+    /* ─── Sidebar Header ──────────────────────────────────── */
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      min-height: 64px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 8px;
+    }
+    .sidebar-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--foreground);
+      letter-spacing: -0.4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .sidebar-logo > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sidebar-logo svg { width: 22px; height: 22px; fill: var(--primary); flex-shrink: 0; stroke: none; }
+
+    /* collapsed hide text elements */
+    .sidebar.collapsed:not(.mobile-open) .sidebar-logo > span,
+    .sidebar.collapsed:not(.mobile-open) .nav-text,
+    .sidebar.collapsed:not(.mobile-open) .profile-info,
+    .sidebar.collapsed:not(.mobile-open) .section-title,
+    .sidebar.collapsed:not(.mobile-open) .sidebar-controls-group,
+    .sidebar.collapsed:not(.mobile-open) .theme-select-wrapper,
+    .sidebar.collapsed:not(.mobile-open) .nav-edit-actions,
+    .sidebar.collapsed:not(.mobile-open) .profile-actions,
+    .sidebar.collapsed:not(.mobile-open) .nav-add-btn { display: none !important; }
+    .sidebar.collapsed:not(.mobile-open) .sidebar-logo { justify-content: center; padding: 0; width: 100%; }
+    .sidebar.collapsed:not(.mobile-open) .sidebar-header .toggle-sidebar-btn { margin: 0 auto; }
+    .sidebar.collapsed:not(.mobile-open) .sidebar-footer { justify-content: center; padding: 12px 0 !important; }
+
+    /* ─── Toggle Button ───────────────────────────────────── */
+    .toggle-sidebar-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      border-radius: var(--radius-medium);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .toggle-sidebar-btn:hover {
+      background: var(--accent);
+      color: var(--primary);
+      border-color: transparent;
+    }
+    .toggle-sidebar-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ─── Nav List ────────────────────────────────────────── */
+    .sidebar-nav {
+      list-style: none;
+      margin: 0;
+      padding: 8px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sidebar-nav li { display: flex; align-items: center; gap: 4px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 10px;
+      border-radius: var(--radius-medium);
+      color: var(--muted-foreground);
+      font-size: 13.5px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background var(--transition-smooth), color var(--transition-smooth), transform 0.15s ease;
+      flex: 1;
+      min-width: 0;
+    }
+    .nav-item:hover {
+      background: var(--accent);
+      color: var(--foreground);
+      transform: translateX(2px);
+    }
+    .nav-item.active {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      font-weight: 600;
+    }
+    .nav-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .nav-icon svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .nav-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ─── Controls Section ────────────────────────────────── */
+    .sidebar-controls-section {
+      border-top: 1px solid var(--border);
+      padding: 10px;
+      flex-shrink: 0;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted-foreground);
+      margin-bottom: 8px;
+      padding: 0 2px;
+    }
+    .sidebar-controls-group { display: flex; flex-direction: column; gap: 5px; }
+
+    .sidebar-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-medium);
+      background: transparent;
+      color: var(--muted-foreground);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .sidebar-btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; flex-shrink: 0; }
+    .sidebar-btn:hover {
+      background: var(--accent);
+      color: var(--foreground);
+      border-color: transparent;
+    }
+    .sidebar-btn.primary {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: transparent;
+      font-weight: 600;
+    }
+    .sidebar-btn.primary:hover { filter: brightness(1.1); }
+    .sidebar-btn.danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: var(--danger);
+      opacity: 0.8;
+    }
+    .sidebar-btn.danger:hover { background: var(--danger); color: #fff; opacity: 1; }
+
+    /* ─── Theme Select ────────────────────────────────────── */
+    .theme-select-wrapper {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .theme-select-wrapper .section-title {
+      margin-bottom: 6px;
+    }
+    .theme-select-wrapper select {
+      width: 100%;
+      padding: 7px 28px 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-medium);
+      background: var(--muted);
+      color: var(--foreground);
+      font-size: 12.5px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: border-color 0.15s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    .theme-select-wrapper select:hover { border-color: var(--primary); }
+    .theme-select-wrapper select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
+
+    /* ─── Sidebar Footer / Profiles ───────────────────────── */
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .profile-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .profile-img { width: 36px; height: 36px; border-radius: var(--radius-full); object-fit: cover; border: 2px solid var(--border); flex-shrink: 0; }
+    .profile-info { min-width: 0; flex: 1; }
+    .profile-name { font-size: 13px; font-weight: 600; color: var(--foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .profile-role { font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    
+    .profile-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .profile-select {
+      flex: 1;
+      padding: 6px;
+      font-size: 11px;
+      border-radius: var(--radius-small);
+      border: 1px solid var(--border);
+      background: var(--muted);
+      color: var(--foreground);
+      font-family: var(--font-sans);
+      cursor: pointer;
+    }
+    .profile-add-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      border-radius: var(--radius-small);
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      transition: filter 0.15s;
+    }
+    .profile-add-btn:hover { filter: brightness(1.1); }
+    
+    .profile-action-btn.danger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      border-radius: var(--radius-small);
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.15s;
+    }
+    .profile-action-btn.danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    #mobile-top-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      min-height: 56px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #mobile-top-bar strong { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+
+    #app-container {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-auto-rows: min-content;
+      grid-auto-flow: dense;
+      align-items: stretch;
+      padding: 8px;
+      gap: 8px;
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+
+    @media (max-width: 1024px) {
+      #app-container { grid-template-columns: repeat(8, 1fr); }
+    }
+    @media (max-width: 640px) {
+      #app-container { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* ─── Widget Cards ────────────────────────────────────── */
+    .dynamic-box {
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-large);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      cursor: grab;
+      user-select: none;
+      touch-action: pan-y;
+      box-sizing: border-box;
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+      transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s;
+    }
+    .dynamic-box::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--ring));
+      opacity: 0.85;
+      transition: opacity 0.2s, height 0.2s;
+      z-index: 5;
+    }
+    .dynamic-box:hover {
+      box-shadow: 0 14px 28px -4px color-mix(in srgb, var(--primary) 20%, transparent), 0 6px 12px -2px rgba(0, 0, 0, 0.06);
+      transform: translateY(-3px);
+      border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+    }
+    .dynamic-box:hover::before {
+      opacity: 1;
+      height: 4px;
+    }
+    .dynamic-box:active { cursor: grabbing; transform: none; }
+    .locked .dynamic-box { cursor: default; touch-action: pan-y; }
+    .locked .dynamic-box:hover { transform: none; }
+    body.is-resizing .dynamic-box:hover {
+      transform: none;
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+      border-color: var(--border);
+    }
+    .dynamic-box.dragging {
+      position: fixed; z-index: 9999;
+      pointer-events: none; opacity: 0.94;
+      box-shadow: 0 24px 48px -8px rgba(0,0,0,0.35);
+      transform: scale(1.02) rotate(-0.8deg);
+      touch-action: none;
+    }
+
+    /* ─── Widget Content ──────────────────────────────────── */
+    .widget-content-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 0;
+      flex: 1 1 auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .comp-text {
+      word-break: break-word;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--foreground);
+      line-height: 1.5;
+    }
+
+    /* Buttons */
+    .comp-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 18px;
+      border: none;
+      border-radius: var(--radius-medium);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--primary) 35%, transparent);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .comp-btn:hover { filter: brightness(1.1); transform: translateY(-1.5px); }
+    .comp-btn:active { transform: translateY(0); filter: brightness(0.95); }
+
+    /* Toggle */
+    .comp-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-medium);
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      background: var(--muted);
+      color: var(--muted-foreground);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .comp-toggle-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--accent); }
+    .comp-toggle-btn.active {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+      box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--primary) 40%, transparent);
+    }
+
+    /* On/Off group */
+    .comp-onoff-group {
+      display: flex;
+      border-radius: var(--radius-medium);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--muted);
+      padding: 2px;
+    }
+    .comp-onoff-btn {
+      flex: 1; padding: 7px 12px;
+      border: none;
+      border-radius: calc(var(--radius-medium) - 2px);
+      font-size: 12px; font-weight: 600;
+      font-family: var(--font-sans);
+      background: transparent;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .comp-onoff-btn:hover { color: var(--foreground); }
+    .comp-onoff-btn.on-active {
+      background: var(--success);
+      color: var(--success-foreground);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--success) 30%, transparent);
+    }
+    .comp-onoff-btn.off-active {
+      background: var(--danger);
+      color: var(--danger-foreground);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--danger) 30%, transparent);
+    }
+
+    /* Switch */
+    .comp-switch-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-medium);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--foreground);
+    }
+    .switch { position: relative; display: inline-block; width: 42px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider-switch {
+      position: absolute; inset: 0;
+      background: var(--input);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.25s, box-shadow 0.25s;
+    }
+    .slider-switch::before {
+      content: "";
+      position: absolute;
+      width: 18px; height: 18px;
+      left: 3px; bottom: 3px;
+      background: var(--card);
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    input:checked + .slider-switch {
+      background: var(--primary);
+      box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 40%, transparent);
+    }
+    input:checked + .slider-switch::before { transform: translateX(18px); }
+
+    /* Slider */
+    .comp-slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px;
+      background: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-medium);
+      color: var(--foreground);
+    }
+    .comp-slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .slider-val {
+      background: var(--accent);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 11.5px;
+      font-weight: 700;
+      border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+    }
+    .comp-slider-group input[type="range"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: var(--input);
+      border-radius: var(--radius-full);
+      outline: none;
+      cursor: pointer;
+    }
+    .comp-slider-group input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 50%, transparent);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .comp-slider-group input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    /* Nested div */
+    .comp-nested-div {
+      padding: 12px;
+      background: var(--faint);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-medium);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      color: var(--foreground);
+    }
+
+    /* ─── Widget Overlays ─────────────────────────────────── */
+    .overflow-arrow {
+      position: absolute; bottom: 8px; right: 10px;
+      font-size: 11px;
+      background: var(--primary);
+      color: var(--primary-foreground);
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      display: none; pointer-events: none; z-index: 15;
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 40%, transparent);
+      animation: bounceDown 1.5s infinite;
+    }
+    @keyframes bounceDown {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(3px); }
+    }
+    .dynamic-box.has-overflow .overflow-arrow { display: block; }
+
+    .edit-btn {
+      position: absolute;
+      top: 8px; right: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: var(--radius-small);
+      background: color-mix(in srgb, var(--card) 85%, var(--primary));
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      color: var(--foreground);
+      cursor: pointer;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+    .edit-btn:hover {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: transparent;
+      box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 40%, transparent);
+    }
+
+    /* Resize handles */
+    .resize-handle-right {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: 8px; cursor: ew-resize; z-index: 20;
+    }
+    .resize-handle-right:hover { background: color-mix(in srgb, var(--primary) 20%, transparent); }
+    .resize-handle-bottom {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: 8px; cursor: ns-resize; z-index: 20;
+    }
+    .resize-handle-bottom:hover { background: color-mix(in srgb, var(--primary) 20%, transparent); }
+    .locked .resize-handle-right, .locked .resize-handle-bottom { display: none; }
+
+    .placeholder {
+      border: 2px dashed var(--primary);
+      background: color-mix(in srgb, var(--primary) 5%, transparent);
+      border-radius: var(--radius-large);
+      box-sizing: border-box;
+    }
+    .is-dragging * { user-select: none !important; }
+
+    /* ─── Modals ──────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(6px);
+      z-index: 99998;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.96);
+      background: var(--card);
+      color: var(--foreground);
+      padding: 24px;
+      border-radius: var(--radius-large);
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 60px -12px rgba(0,0,0,0.3);
+      z-index: 100000;
+      width: 720px;
+      max-width: 96vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: modalPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes modalPop {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    .modal h3 {
+      margin: 0 0 20px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--foreground);
+      letter-spacing: -0.3px;
+    }
+
+    .form-group { margin-bottom: 16px; display: flex; flex-direction: column; }
+    .form-group label { font-size: 12px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 5px; display: block; }
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="color"],
+    .form-group select {
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-medium);
+      background: var(--background);
+      color: var(--foreground);
+      font-size: 13.5px;
+      font-family: var(--font-sans);
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+    }
+    .form-group input[type="range"] { accent-color: var(--primary); cursor: pointer; }
+
+    .components-editor-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
+    .comp-edit-card {
+      background: var(--faint);
+      padding: 14px;
+      border-radius: var(--radius-medium);
+      border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .comp-edit-top { display: flex; gap: 10px; align-items: center; }
+    .comp-edit-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .comp-edit-details .full-w { grid-column: span 2; }
+    .comp-edit-details label { font-size: 11px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 3px; display: block; }
+
+    .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .modal-actions-right { display: flex; gap: 8px; }
+
+    .modal button {
+      padding: 8px 16px;
+      border-radius: var(--radius-medium);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--muted);
+      color: var(--foreground);
+      transition: all 0.15s;
+    }
+    .modal button:hover { background: var(--accent); border-color: transparent; }
+    .modal button.primary { background: var(--primary); color: var(--primary-foreground); border-color: transparent; font-weight: 600; }
+    .modal button.primary:hover { filter: brightness(1.1); }
+    .modal button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+    .modal button.danger:hover { background: var(--danger); color: #fff; }
+    .sidebar.collapsed { overflow: visible !important; }
+    .sidebar:not(.collapsed) [data-tooltip]::before,
+    .sidebar:not(.collapsed) [data-tooltip]::after { z-index: 9999 !important; }
+
+    /* ─── Mobile View & Scrolling Fix ────────────────────── */
+    @media (max-width: 768px) {
+      html, body {
+        height: auto;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      #mobile-top-bar { display: flex; }
+      #app-wrapper {
+        flex-direction: column;
+        height: auto;
+        min-height: calc(100vh - 56px);
+        overflow: visible;
+      }
+      #app-container {
+        overflow-y: visible;
+        height: auto;
+      }
+      .sidebar {
+        position: fixed;
+        top: 56px; bottom: 0;
+        width: var(--sidebar-width, 260px) !important;
+        height: calc(100vh - 56px);
+        z-index: 1100;
+      }
+      .sidebar.collapsed { width: var(--sidebar-width, 260px) !important; }
+      #left-sidebar { left: 0; transform: translateX(-100%); }
+      #left-sidebar.mobile-open { transform: translateX(0); }
+      #right-sidebar { right: 0; transform: translateX(100%); border-left: none; border-right: none; }
+      #right-sidebar.mobile-open { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body class="locked">
+  
+  <input type="file" id="import-file" style="display: none" accept=".json" onchange="importJSON(event)">
+
+  <div id="mobile-top-bar">
+    <button class="toggle-sidebar-btn" onclick="toggleLeftSidebar()" title="Toggle Menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <strong>TTS IOT</strong>
+    <button class="toggle-sidebar-btn" onclick="toggleRightSidebar()" title="Toggle Tools">
+      <i class="fa-solid fa-sliders"></i>
+    </button>
+  </div>
+
+  <div id="app-wrapper">
+    <aside id="left-sidebar" class="sidebar collapsed"></aside>
+    <div id="app-container"></div>
+    <aside id="right-sidebar" class="sidebar collapsed"></aside>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" onclick="closeAllModals()"></div>
+
+  <!-- EDIT WIDGET MODAL -->
+  <div class="modal" id="edit-modal">
+    <h3>Configure Widget & Components</h3>
+    <div class="form-group"><label>Width (Column Span)</label><input type="number" id="edit-colspan" min="1" max="12"></div>
+    <div class="form-group"><label>Widget Background Color</label><input type="color" id="edit-color"></div>
+    <div class="form-group">
+      <label>Component Customization Suite</label>
+      <div id="components-editor-list" class="components-editor-list"></div>
+      <button type="button" onclick="addComponentRow('root')" style="width:100%; margin-top:6px;">+ Add Component</button>
+    </div>
+    <div class="modal-actions">
+      <button onclick="deleteCurrentWidget()" class="danger">Remove Widget</button>
+      <div class="modal-actions-right">
+        <button onclick="closeAllModals()">Cancel</button>
+        <button onclick="saveEdit()" class="primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD WIDGET MODAL -->
+  <div class="modal" id="add-modal">
+    <h3>Add New Widget</h3>
+    <div class="form-group"><label id="new-colspan-label">Width (Column Span)</label><input type="number" id="new-colspan" value="4" min="1" max="12"></div>
+    <div class="form-group"><label>Widget Background Color</label><input type="color" id="new-color" value="#ffffff"></div>
+    <div class="modal-actions">
+      <button onclick="closeAllModals()">Cancel</button>
+      <button onclick="addWidget()" class="primary">Add Widget</button>
+    </div>
+  </div>
+
+  <!-- LAYOUT SETTINGS MODAL -->
+  <div class="modal" id="layout-settings-modal">
+    <h3>Layout & Grid Controls</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div>
+        <h4 style="margin: 0 0 10px 0; font-size: 13px;">Dashboard Grid</h4>
+        <div class="form-group">
+          <label>Grid Gap (<span id="gap-val">20</span>px)</label>
+          <input type="range" id="setting-gap" min="0" max="50" oninput="updateGapPreview(this.value)">
+        </div>
+        <div class="form-group">
+          <label>Widget Padding (<span id="padding-val">18</span>px)</label>
+          <input type="range" id="setting-padding" min="0" max="40" oninput="updatePaddingPreview(this.value)">
+        </div>
+      </div>
+      <div>
+        <h4 style="margin: 0 0 10px 0; font-size: 13px;">Sidebar Dimensions</h4>
+        <div class="form-group">
+          <label>Sidebar Width (<span id="sb-width-val">260</span>px)</label>
+          <input type="range" id="setting-sb-width" min="180" max="380" oninput="updateSbWidthPreview(this.value)">
+        </div>
+        <div class="form-group">
+          <label>Sidebar Padding (<span id="sb-padding-val">12</span>px)</label>
+          <input type="range" id="setting-sb-padding" min="4" max="24" oninput="updateSbPaddingPreview(this.value)">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button onclick="closeAllModals()">Cancel</button>
+      <button onclick="saveLayoutSettings()" class="primary">Save Settings</button>
+    </div>
+  </div>
+
+  <!-- EDIT NAV ITEM MODAL -->
+  <div class="modal" id="nav-item-modal">
+    <h3 id="nav-modal-title">Edit Navigation Item</h3>
+    <div class="form-group"><label>Title</label><input type="text" id="nav-input-title" placeholder="e.g. Dashboard"></div>
+    <div class="form-group"><label>URL / Target Link (Optional)</label><input type="text" id="nav-input-href" placeholder="https://example.com"></div>
+    <div class="modal-actions">
+      <button onclick="closeAllModals()">Cancel</button>
+      <button onclick="saveNavItem()" class="primary">Save Nav Item</button>
+    </div>
+  </div>
+
+  <!-- CREATE PROFILE MODAL -->
+  <div class="modal" id="create-profile-modal" style="width: 400px;">
+    <h3>Create New Profile</h3>
+    <div class="form-group">
+      <label>User Name</label>
+      <input type="text" id="new-profile-name" placeholder="Enter full name">
+    </div>
+    <div class="form-group">
+      <label>Role / Title</label>
+      <input type="text" id="new-profile-role" placeholder="e.g. Developer">
+    </div>
+    <div class="form-group">
+      <label>Avatar Image URL (Optional)</label>
+      <input type="text" id="new-profile-img" placeholder="https://...">
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeAllModals()">Cancel</button>
+      <button onclick="createNewProfile()" class="primary">Create User</button>
+    </div>
+  </div>
+
+  <script>
+    const themePresets = {
+  // --- DARK & GLOW / MONOCHROME ---
+  'glow-white-dark': {
+    label: '✨ Dark & Glow White',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#0a0a0c',
+      '--foreground': '#ffffff',
+      '--card': '#121216',
+      '--card-foreground': '#ffffff',
+      '--primary': '#ffffff',
+      '--primary-foreground': '#000000',
+      '--secondary': '#1a1a22',
+      '--secondary-foreground': '#ffffff',
+      '--muted': '#1a1a22',
+      '--muted-foreground': '#a1a1aa',
+      '--faint': '#0e0e12',
+      '--faint-foreground': '#71717a',
+      '--accent': 'rgba(255, 255, 255, 0.12)',
+      '--danger': '#f87171',
+      '--danger-foreground': '#ffffff',
+      '--success': '#34d399',
+      '--success-foreground': '#000000',
+      '--warning': '#fbbf24',
+      '--warning-foreground': '#000000',
+      '--border': '#27272a',
+      '--input': '#27272a',
+      '--ring': 'rgba(255, 255, 255, 0.85)',
+      '--sidebar-bg': 'rgba(18, 18, 22, 0.95)'
+    }
+  },
+
+  // --- CYBERPUNK & NEON ---
+  'cyberpunk-dark': {
+    label: '⚡ Cyberpunk Dark',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#0d0221',
+      '--foreground': '#00f5d4',
+      '--card': '#190a38',
+      '--card-foreground': '#00f5d4',
+      '--primary': '#ff007f',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#270f52',
+      '--secondary-foreground': '#7b2cbf',
+      '--muted': '#270f52',
+      '--muted-foreground': '#bd3797',
+      '--faint': '#12042b',
+      '--faint-foreground': '#7b2cbf',
+      '--accent': 'rgba(255, 0, 127, 0.2)',
+      '--danger': '#ff0055',
+      '--danger-foreground': '#ffffff',
+      '--success': '#00f5d4',
+      '--success-foreground': '#0d0221',
+      '--warning': '#fee440',
+      '--warning-foreground': '#0d0221',
+      '--border': '#3d1e6d',
+      '--input': '#3d1e6d',
+      '--ring': '#ff007f',
+      '--sidebar-bg': 'rgba(25, 10, 56, 0.95)'
+    }
+  },
+  'spotify-dark': {
+    label: '🎧 Obsidian Neon Green',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#121212',
+      '--foreground': '#ffffff',
+      '--card': '#181818',
+      '--card-foreground': '#ffffff',
+      '--primary': '#1db954',
+      '--primary-foreground': '#000000',
+      '--secondary': '#282828',
+      '--secondary-foreground': '#1db954',
+      '--muted': '#282828',
+      '--muted-foreground': '#b3b3b3',
+      '--faint': '#141414',
+      '--faint-foreground': '#727272',
+      '--accent': 'rgba(29, 185, 84, 0.15)',
+      '--danger': '#e91429',
+      '--danger-foreground': '#ffffff',
+      '--success': '#1db954',
+      '--success-foreground': '#000000',
+      '--warning': '#f59e0b',
+      '--warning-foreground': '#121212',
+      '--border': '#2a2a2a',
+      '--input': '#2a2a2a',
+      '--ring': '#ffffff',
+      '--sidebar-bg': 'rgba(24, 24, 24, 0.95)'
+    }
+  },
+
+  // --- PURPLE / INDIGO PALETTES ---
+  'indigo-light': {
+    label: '🟣 Indigo Light',
+    colorScheme: 'light',
+    vars: {
+      '--background': '#f8fafc',
+      '--foreground': '#0f172a',
+      '--card': '#ffffff',
+      '--card-foreground': '#0f172a',
+      '--primary': '#4f46e5',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#f1f5f9',
+      '--secondary-foreground': '#4f46e5',
+      '--muted': '#f1f5f9',
+      '--muted-foreground': '#64748b',
+      '--faint': '#f8fafc',
+      '--faint-foreground': '#94a3b8',
+      '--accent': '#eef2ff',
+      '--danger': '#ef4444',
+      '--danger-foreground': '#ffffff',
+      '--success': '#10b981',
+      '--success-foreground': '#ffffff',
+      '--warning': '#f59e0b',
+      '--warning-foreground': '#0f172a',
+      '--border': '#e2e8f0',
+      '--input': '#cbd5e1',
+      '--ring': '#818cf8',
+      '--sidebar-bg': 'rgba(255, 255, 255, 0.95)'
+    }
+  },
+  'indigo-dark': {
+    label: '🌌 Indigo Dark',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#0b0f19',
+      '--foreground': '#f1f5f9',
+      '--card': '#161e31',
+      '--card-foreground': '#f1f5f9',
+      '--primary': '#6366f1',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#1e293b',
+      '--secondary-foreground': '#818cf8',
+      '--muted': '#1e293b',
+      '--muted-foreground': '#94a3b8',
+      '--faint': '#0f172a',
+      '--faint-foreground': '#64748b',
+      '--accent': 'rgba(99, 102, 241, 0.15)',
+      '--danger': '#f87171',
+      '--danger-foreground': '#ffffff',
+      '--success': '#34d399',
+      '--success-foreground': '#ffffff',
+      '--warning': '#fbbf24',
+      '--warning-foreground': '#0f172a',
+      '--border': '#243049',
+      '--input': '#334155',
+      '--ring': '#a5b4fc',
+      '--sidebar-bg': 'rgba(22, 30, 49, 0.95)'
+    }
+  },
+  'slack-aubergine': {
+    label: '🍆 Aubergine Dark',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#1a1d21',
+      '--foreground': '#d1d2d3',
+      '--card': '#222529',
+      '--card-foreground': '#d1d2d3',
+      '--primary': '#36c5f0',
+      '--primary-foreground': '#1a1d21',
+      '--secondary': '#4a154b',
+      '--secondary-foreground': '#ffffff',
+      '--muted': '#2c2d30',
+      '--muted-foreground': '#abacb1',
+      '--faint': '#19171d',
+      '--faint-foreground': '#616061',
+      '--accent': 'rgba(54, 197, 240, 0.15)',
+      '--danger': '#e01e5a',
+      '--danger-foreground': '#ffffff',
+      '--success': '#2eb67d',
+      '--success-foreground': '#ffffff',
+      '--warning': '#ecb22e',
+      '--warning-foreground': '#1a1d21',
+      '--border': '#383a3e',
+      '--input': '#383a3e',
+      '--ring': '#ffffff',
+      '--sidebar-bg': 'rgba(34, 37, 41, 0.95)'
+    }
+  },
+
+  // --- GREEN / EMERALD PALETTES ---
+  'emerald-light': {
+    label: '🌿 Emerald Light',
+    colorScheme: 'light',
+    vars: {
+      '--background': '#f0fdf4',
+      '--foreground': '#052e16',
+      '--card': '#ffffff',
+      '--card-foreground': '#052e16',
+      '--primary': '#059669',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#ecfdf5',
+      '--secondary-foreground': '#059669',
+      '--muted': '#f0fdf4',
+      '--muted-foreground': '#4b5563',
+      '--faint': '#f7fef9',
+      '--faint-foreground': '#9ca3af',
+      '--accent': '#d1fae5',
+      '--danger': '#ef4444',
+      '--danger-foreground': '#ffffff',
+      '--success': '#10b981',
+      '--success-foreground': '#ffffff',
+      '--warning': '#f59e0b',
+      '--warning-foreground': '#052e16',
+      '--border': '#d1d5db',
+      '--input': '#d1d5db',
+      '--ring': '#6ee7b7',
+      '--sidebar-bg': 'rgba(255, 255, 255, 0.95)'
+    }
+  },
+  'emerald-dark': {
+    label: '🌲 Emerald Dark',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#022c22',
+      '--foreground': '#ecfdf5',
+      '--card': '#064e3b',
+      '--card-foreground': '#ecfdf5',
+      '--primary': '#34d399',
+      '--primary-foreground': '#022c22',
+      '--secondary': '#064e3b',
+      '--secondary-foreground': '#6ee7b7',
+      '--muted': '#064e3b',
+      '--muted-foreground': '#a7f3d0',
+      '--faint': '#033a2c',
+      '--faint-foreground': '#6ee7b7',
+      '--accent': 'rgba(52, 211, 153, 0.15)',
+      '--danger': '#f87171',
+      '--danger-foreground': '#ffffff',
+      '--success': '#34d399',
+      '--success-foreground': '#022c22',
+      '--warning': '#fbbf24',
+      '--warning-foreground': '#022c22',
+      '--border': '#065f46',
+      '--input': '#065f46',
+      '--ring': '#6ee7b7',
+      '--sidebar-bg': 'rgba(6, 78, 59, 0.95)'
+    }
+  },
+
+  // --- RED / ROSE / ORANGE PALETTES ---
+  'rose-light': {
+    label: '🌸 Rose Light',
+    colorScheme: 'light',
+    vars: {
+      '--background': '#fff1f2',
+      '--foreground': '#1c1917',
+      '--card': '#ffffff',
+      '--card-foreground': '#1c1917',
+      '--primary': '#e11d48',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#ffe4e6',
+      '--secondary-foreground': '#e11d48',
+      '--muted': '#fce7f3',
+      '--muted-foreground': '#6b7280',
+      '--faint': '#fff5f6',
+      '--faint-foreground': '#9ca3af',
+      '--accent': '#fecdd3',
+      '--danger': '#dc2626',
+      '--danger-foreground': '#ffffff',
+      '--success': '#16a34a',
+      '--success-foreground': '#ffffff',
+      '--warning': '#ea580c',
+      '--warning-foreground': '#1c1917',
+      '--border': '#e5e7eb',
+      '--input': '#d1d5db',
+      '--ring': '#fb7185',
+      '--sidebar-bg': 'rgba(255, 255, 255, 0.95)'
+    }
+  },
+  'rose-dark': {
+    label: '🥀 Rose Dark',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#1a0a0e',
+      '--foreground': '#fce7f3',
+      '--card': '#2d1219',
+      '--card-foreground': '#fce7f3',
+      '--primary': '#fb7185',
+      '--primary-foreground': '#1a0a0e',
+      '--secondary': '#2d1219',
+      '--secondary-foreground': '#fda4af',
+      '--muted': '#2d1219',
+      '--muted-foreground': '#fda4af',
+      '--faint': '#210e13',
+      '--faint-foreground': '#f9a8d4',
+      '--accent': 'rgba(251, 113, 133, 0.15)',
+      '--danger': '#f87171',
+      '--danger-foreground': '#ffffff',
+      '--success': '#4ade80',
+      '--success-foreground': '#1a0a0e',
+      '--warning': '#fbbf24',
+      '--warning-foreground': '#1a0a0e',
+      '--border': '#4a1525',
+      '--input': '#4a1525',
+      '--ring': '#fda4af',
+      '--sidebar-bg': 'rgba(45, 18, 25, 0.95)'
+    }
+  },
+  'orange-dark': {
+    label: '🔥 Crimson Orange Dark',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#0e0e0f',
+      '--foreground': '#ffffff',
+      '--card': '#1a1a1b',
+      '--card-foreground': '#ffffff',
+      '--primary': '#ff4500',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#272729',
+      '--secondary-foreground': '#ff4500',
+      '--muted': '#272729',
+      '--muted-foreground': '#818384',
+      '--faint': '#121213',
+      '--faint-foreground': '#565758',
+      '--accent': 'rgba(255, 69, 0, 0.15)',
+      '--danger': '#ea0027',
+      '--danger-foreground': '#ffffff',
+      '--success': '#24a0ed',
+      '--success-foreground': '#ffffff',
+      '--warning': '#ffd635',
+      '--warning-foreground': '#000000',
+      '--border': '#343536',
+      '--input': '#343536',
+      '--ring': '#ffffff',
+      '--sidebar-bg': 'rgba(26, 26, 27, 0.95)'
+    }
+  },
+
+  // --- AMBER / SOLAR PALETTES ---
+  'amber-light': {
+    label: '☀️ Amber Light',
+    colorScheme: 'light',
+    vars: {
+      '--background': '#fffbeb',
+      '--foreground': '#1c1917',
+      '--card': '#ffffff',
+      '--card-foreground': '#1c1917',
+      '--primary': '#d97706',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#fef3c7',
+      '--secondary-foreground': '#b45309',
+      '--muted': '#fef3c7',
+      '--muted-foreground': '#6b7280',
+      '--faint': '#fffdf5',
+      '--faint-foreground': '#9ca3af',
+      '--accent': '#fde68a',
+      '--danger': '#dc2626',
+      '--danger-foreground': '#ffffff',
+      '--success': '#16a34a',
+      '--success-foreground': '#ffffff',
+      '--warning': '#ea580c',
+      '--warning-foreground': '#1c1917',
+      '--border': '#e5e7eb',
+      '--input': '#d1d5db',
+      '--ring': '#fbbf24',
+      '--sidebar-bg': 'rgba(255, 255, 255, 0.95)'
+    }
+  },
+  'amber-dark': {
+    label: '☀️ Solar Amber Dark',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#17130e',
+      '--foreground': '#fefce8',
+      '--card': '#261f17',
+      '--card-foreground': '#fefce8',
+      '--primary': '#ffb534',
+      '--primary-foreground': '#17130e',
+      '--secondary': '#362c20',
+      '--secondary-foreground': '#ff7f50',
+      '--muted': '#362c20',
+      '--muted-foreground': '#b8a695',
+      '--faint': '#1c1711',
+      '--faint-foreground': '#7a6b5d',
+      '--accent': 'rgba(255, 181, 52, 0.15)',
+      '--danger': '#ff7f50',
+      '--danger-foreground': '#ffffff',
+      '--success': '#2ecc71',
+      '--success-foreground': '#17130e',
+      '--warning': '#ffb534',
+      '--warning-foreground': '#17130e',
+      '--border': '#453829',
+      '--input': '#453829',
+      '--ring': '#ffffff',
+      '--sidebar-bg': 'rgba(38, 31, 23, 0.95)'
+    }
+  },
+
+  // --- OCEAN / BLUE PALETTES ---
+  'ocean-deep': {
+    label: '🌊 Ocean Deep Light',
+    colorScheme: 'light',
+    vars: {
+      '--background': '#f0f9ff',
+      '--foreground': '#0369a1',
+      '--card': '#ffffff',
+      '--card-foreground': '#0369a1',
+      '--primary': '#0284c7',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#e0f2fe',
+      '--secondary-foreground': '#0369a1',
+      '--muted': '#e0f2fe',
+      '--muted-foreground': '#0369a1',
+      '--faint': '#f8fafc',
+      '--faint-foreground': '#38bdf8',
+      '--accent': '#bae6fd',
+      '--danger': '#ef4444',
+      '--danger-foreground': '#ffffff',
+      '--success': '#0ea5e9',
+      '--success-foreground': '#ffffff',
+      '--warning': '#f59e0b',
+      '--warning-foreground': '#0369a1',
+      '--border': '#bae6fd',
+      '--input': '#7dd3fc',
+      '--ring': '#38bdf8',
+      '--sidebar-bg': 'rgba(255, 255, 255, 0.95)'
+    }
+  },
+
+  // --- CUSTOM MODERN THEMES ---
+  'dracula-dark': {
+    label: '🧛 Midnight Dracula',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#282a36',
+      '--foreground': '#f8f8f2',
+      '--card': '#383a59',
+      '--card-foreground': '#f8f8f2',
+      '--primary': '#bd93f9',
+      '--primary-foreground': '#282a36',
+      '--secondary': '#44475a',
+      '--secondary-foreground': '#ff79c6',
+      '--muted': '#44475a',
+      '--muted-foreground': '#6272a4',
+      '--faint': '#21222c',
+      '--faint-foreground': '#6272a4',
+      '--accent': 'rgba(189, 147, 249, 0.15)',
+      '--danger': '#ff5555',
+      '--danger-foreground': '#ffffff',
+      '--success': '#50fa7b',
+      '--success-foreground': '#282a36',
+      '--warning': '#f1fa8c',
+      '--warning-foreground': '#282a36',
+      '--border': '#44475a',
+      '--input': '#44475a',
+      '--ring': '#bd93f9',
+      '--sidebar-bg': 'rgba(40, 42, 54, 0.95)'
+    }
+  },
+  'matcha-light': {
+    label: '🍵 Matcha Minimal',
+    colorScheme: 'light',
+    vars: {
+      '--background': '#fbfaf6',
+      '--foreground': '#2d3a33',
+      '--card': '#ffffff',
+      '--card-foreground': '#2d3a33',
+      '--primary': '#7d9b76',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#e4eadf',
+      '--secondary-foreground': '#4f634b',
+      '--muted': '#e4eadf',
+      '--muted-foreground': '#8ba385',
+      '--faint': '#f3f5f0',
+      '--faint-foreground': '#a4b89f',
+      '--accent': 'rgba(125, 155, 118, 0.15)',
+      '--danger': '#db7070',
+      '--danger-foreground': '#ffffff',
+      '--success': '#6b9e67',
+      '--success-foreground': '#ffffff',
+      '--warning': '#d99e52',
+      '--warning-foreground': '#2d3a33',
+      '--border': '#d3dbcd',
+      '--input': '#e4eadf',
+      '--ring': '#7d9b76',
+      '--sidebar-bg': 'rgba(251, 250, 246, 0.95)'
+    }
+  },
+  'abyss-dark': {
+    label: '🦑 Abyssal Blue',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#040b16',
+      '--foreground': '#e2f1ff',
+      '--card': '#0a1526',
+      '--card-foreground': '#e2f1ff',
+      '--primary': '#0070f3',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#11223c',
+      '--secondary-foreground': '#3291ff',
+      '--muted': '#11223c',
+      '--muted-foreground': '#6688b3',
+      '--faint': '#02060c',
+      '--faint-foreground': '#4d6b8f',
+      '--accent': 'rgba(0, 112, 243, 0.15)',
+      '--danger': '#f31260',
+      '--danger-foreground': '#ffffff',
+      '--success': '#17c964',
+      '--success-foreground': '#040b16',
+      '--warning': '#f5a524',
+      '--warning-foreground': '#040b16',
+      '--border': '#1a2e4c',
+      '--input': '#1a2e4c',
+      '--ring': '#3291ff',
+      '--sidebar-bg': 'rgba(4, 11, 22, 0.95)'
+    }
+  },
+  'taro-light': {
+    label: '🧋 Taro Milk Tea',
+    colorScheme: 'light',
+    vars: {
+      '--background': '#faf7fa',
+      '--foreground': '#4a3b4c',
+      '--card': '#ffffff',
+      '--card-foreground': '#4a3b4c',
+      '--primary': '#9a7ab0',
+      '--primary-foreground': '#ffffff',
+      '--secondary': '#ebdff2',
+      '--secondary-foreground': '#6e5282',
+      '--muted': '#f4edf8',
+      '--muted-foreground': '#a693b3',
+      '--faint': '#fcfafc',
+      '--faint-foreground': '#c3b5cc',
+      '--accent': 'rgba(154, 122, 176, 0.15)',
+      '--danger': '#e85f7a',
+      '--danger-foreground': '#ffffff',
+      '--success': '#54a889',
+      '--success-foreground': '#ffffff',
+      '--warning': '#e3a152',
+      '--warning-foreground': '#4a3b4c',
+      '--border': '#ebdff2',
+      '--input': '#f4edf8',
+      '--ring': '#9a7ab0',
+      '--sidebar-bg': 'rgba(250, 247, 250, 0.95)'
+    }
+  },
+  'mocha-dark': {
+    label: '☕ Autumn Mocha',
+    colorScheme: 'dark',
+    vars: {
+      '--background': '#2b211e',
+      '--foreground': '#e8dccc',
+      '--card': '#362a26',
+      '--card-foreground': '#e8dccc',
+      '--primary': '#d48a55',
+      '--primary-foreground': '#2b211e',
+      '--secondary': '#4f3c36',
+      '--secondary-foreground': '#d48a55',
+      '--muted': '#4f3c36',
+      '--muted-foreground': '#99827a',
+      '--faint': '#1f1816',
+      '--faint-foreground': '#7a645d',
+      '--accent': 'rgba(212, 138, 85, 0.15)',
+      '--danger': '#cc5f5f',
+      '--danger-foreground': '#ffffff',
+      '--success': '#83ad6f',
+      '--success-foreground': '#2b211e',
+      '--warning': '#d9aa55',
+      '--warning-foreground': '#2b211e',
+      '--border': '#5c4842',
+      '--input': '#5c4842',
+      '--ring': '#d48a55',
+      '--sidebar-bg': 'rgba(43, 33, 30, 0.95)'
+    }
+  },
+
+  // --- DEFAULT ---
+  'oat-default': {
+    label: '⚪ OAT Default',
+    colorScheme: 'light dark',
+    vars: {}
+  }
+};
+
+    function applyTheme(themeId) {
+      const theme = themePresets[themeId] || themePresets['indigo-light'];
+      const root = document.documentElement;
+      Object.keys(themePresets).forEach(id => {
+        const t = themePresets[id];
+        if (t.vars) Object.keys(t.vars).forEach(v => root.style.removeProperty(v));
+      });
+      if (theme.vars) Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+      root.style.colorScheme = theme.colorScheme;
+      root.setAttribute('data-theme', themeId);
+      localStorage.setItem('oat-theme', themeId);
+      const sel = document.getElementById('theme-select');
+      if (sel && sel.value !== themeId) sel.value = themeId;
+    }
+
+    window.changeTheme = function(themeId) {
+      applyTheme(themeId);
+      if(window.ot) ot.toast(themePresets[themeId]?.label || themeId, 'Theme Applied', { variant: 'success' });
+    };
+
+    function initTheme() {
+      const stored = localStorage.getItem('oat-theme');
+      if (stored && themePresets[stored]) applyTheme(stored);
+      else { applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'indigo-dark' : 'indigo-light'); }
+    }
+    initTheme();
+
+    function toggleLeftSidebar() {
+      const sidebar = document.getElementById('left-sidebar');
+      if (window.innerWidth <= 768) sidebar.classList.toggle('mobile-open');
+      else sidebar.classList.toggle('collapsed');
+    }
+
+    function toggleRightSidebar() {
+      const sidebar = document.getElementById('right-sidebar');
+      if (window.innerWidth <= 768) sidebar.classList.toggle('mobile-open');
+      else sidebar.classList.toggle('collapsed');
+    }
+
+    /* ─── Base Layout / Widget Structure ────────────────────────────────── */
+    const baseLeftSidebar = {
+      width: 260, padding: 12,
+      header: { title: "TTS IOT", icon: '<i class="fa-solid fa-bolt"></i>' },
+      nav: [
+        { title: "Dashboard", icon: '<i class="fa-solid fa-chart-pie"></i>', active: true },
+        { title: "Users", icon: '<i class="fa-solid fa-users"></i>' },
+        { title: "Messages", icon: '<i class="fa-solid fa-comments"></i>' },
+        { title: "Analytics", icon: '<i class="fa-solid fa-chart-line"></i>' }
+      ],
+      controlsTitle: "Manager",
+      controls: [
+        { title: "Add Widget", icon: '<i class="fa-solid fa-plus"></i>', action: "openAddModal()", style: "primary" },
+        { title: "Layout Settings", icon: '<i class="fa-solid fa-sliders"></i>', action: "openLayoutSettingsModal()" },
+        { id: "lock-btn", title: "Unlock Layout", icon: '<i class="fa-solid fa-lock"></i>', action: "toggleLock()" },
+        { title: "Export Current Layout", icon: '<i class="fa-solid fa-file-export"></i>', action: "exportJSON()" },
+        { title: "Import Layout", icon: '<i class="fa-solid fa-file-import"></i>', action: "document.getElementById('import-file').click()" }
+      ]
+    };
+
+    const baseRightSidebar = {
+      width: 260, padding: 12,
+      header: { title: "Tools" },
+      nav: [
+        { title: "Notifications (3)", icon: "<svg viewBox=\"0 0 24 24\"><path d=\"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9\"></path><path d=\"M13.73 21a2 2 0 0 1-3.46 0\"></path></svg>" },
+        { title: "Dark Theme", icon: "<svg viewBox=\"0 0 24 24\"><path d=\"M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z\"></path></svg>", action: "changeTheme('indigo-dark')" }
+      ]
+    };
+
+    const defaultDashboardItems = [
+      {
+        id: "box_gateway", colSpan: 6, height: "260px", bg: "#ffffff",
+        components: [
+          { type: "text", value: "⚡ Main IoT Cloud Gateway", color: "var(--foreground)", size: "14px", align: "left" },
+          { type: "switch", label: "Telemetry Cloud Sync", checked: true, onChange: "ot.toast('Telemetry Sync status updated', 'IoT Gateway', {variant: 'info'})" },
+          { type: "onoff-group", labelOn: "CONNECTED", labelOff: "OFFLINE", state: "on", onChange: "ot.toast('Gateway status changed', 'Relay', {variant: 'success'})" },
+          { type: "slider", label: "Packet Transmission Rate (s)", min: 1, max: 60, value: 5, onChange: "" }
+        ]
+      },
+      {
+        id: "box_climate", colSpan: 6, height: "260px", bg: "#ffffff",
+        components: [
+          { type: "text", value: "🌡️ HVAC & Climate Controller", color: "var(--foreground)", size: "14px", align: "left" },
+          { type: "switch", label: "Automated Air Circulation", checked: true, onChange: "" },
+          { type: "slider", label: "Target Temperature (°C)", min: 16, max: 32, value: 22, onChange: "" },
+          { type: "toggle-btn", label: "Eco Night Mode", active: true, onChange: "" }
+        ]
+      }
+    ];
+
+    /* ─── Profile Storage Architecture (Separate Files & Index) ──────── */
+    const INDEX_KEY = "tts_iot_users_index_v2";
+    const PROFILE_PREFIX = "tts_iot_profile_v2_";
+
+    let appData = {
+      activeUser: "Sangmeshwar",
+      users: ["Sangmeshwar", "Prathibha"]
+    };
+    let activeProfileData = null; // Holds only the dynamic ACTIVE user layout in memory
+
+    const defaultProfilesData = {
+      "Sangmeshwar": {
+        name: "Sangmeshwar", role: "Coordinator - TTS",
+        img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
+        layout: { gap: 20, padding: 18, items: JSON.parse(JSON.stringify(defaultDashboardItems)) },
+        leftSidebar: JSON.parse(JSON.stringify(baseLeftSidebar)), rightSidebar: JSON.parse(JSON.stringify(baseRightSidebar))
+      },
+      "Prathibha": {
+        name: "Prathibha", role: "Report Meaker - TTS",
+        img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
+        layout: { gap: 14, padding: 14, items: JSON.parse(JSON.stringify(defaultDashboardItems)) },
+        leftSidebar: JSON.parse(JSON.stringify(baseLeftSidebar)), rightSidebar: JSON.parse(JSON.stringify(baseRightSidebar))
+      }
+    };
+
+    // ─── MIGRATION & INITIALIZATION ───
+    const oldStorageKey = "fullscreen_sidebar_custom_users_v8";
+    const rawStored = JSON.parse(localStorage.getItem(oldStorageKey));
+
+    if (rawStored && rawStored.profiles) {
+      // Migrate from single monolithic storage to separate files
+      appData.activeUser = rawStored.activeUser;
+      appData.users = Object.keys(rawStored.profiles);
+      appData.users.forEach(u => {
+         localStorage.setItem(PROFILE_PREFIX + u, JSON.stringify(rawStored.profiles[u]));
+      });
+      localStorage.setItem(INDEX_KEY, JSON.stringify(appData));
+      localStorage.removeItem(oldStorageKey);
+    } else {
+      const storedIndex = JSON.parse(localStorage.getItem(INDEX_KEY));
+      if (storedIndex && storedIndex.users) {
+        appData = storedIndex;
+      } else {
+        // Initial setup for completely new device
+        localStorage.setItem(PROFILE_PREFIX + "Sangmeshwar", JSON.stringify(defaultProfilesData["Sangmeshwar"]));
+        localStorage.setItem(PROFILE_PREFIX + "Prathibha", JSON.stringify(defaultProfilesData["Prathibha"]));
+        localStorage.setItem(INDEX_KEY, JSON.stringify(appData));
+      }
+    }
+
+    function loadProfile(username) {
+      const data = localStorage.getItem(PROFILE_PREFIX + username);
+      if (data) {
+        activeProfileData = JSON.parse(data);
+        appData.activeUser = username;
+        localStorage.setItem(INDEX_KEY, JSON.stringify(appData));
+      } else if (appData.users.length > 0) {
+        // Safe fallback mechanism if user file is missing
+        activeProfileData = { name: username, role: "Unknown User", layout: { gap: 20, padding: 18, items: []}, leftSidebar: baseLeftSidebar, rightSidebar: baseRightSidebar };
+      }
+    }
+
+    loadProfile(appData.activeUser);
+    if (!activeProfileData) {
+      // Absolute fallback if everything is wiped
+      appData.users = ["Sangmeshwar"];
+      appData.activeUser = "Sangmeshwar";
+      activeProfileData = defaultProfilesData["Sangmeshwar"];
+      saveLayout();
+    }
+
+    // Helper returning standard reference mapping to UI
+    function activeProfile() {
+      return activeProfileData;
+    }
+
+    function saveLayout() {
+      if (activeProfileData && appData.activeUser) {
+        localStorage.setItem(PROFILE_PREFIX + appData.activeUser, JSON.stringify(activeProfileData));
+        localStorage.setItem(INDEX_KEY, JSON.stringify(appData));
+      }
+    }
+
+    let isLocked = true;
+    const container = document.getElementById("app-container");
+
+    /* --- PROFILE MANAGEMENT --- */
+    window.switchUserProfile = function(username) {
+      if (!appData.users.includes(username)) return;
+      saveLayout(); // Save state of previous user
+      loadProfile(username); // Inject separated config layout
+      if(window.ot) ot.toast(`Switched to profile: ${username}`, "Profile Changed", {variant: "info"});
+      renderSidebars();
+      renderUI();
+    };
+
+    window.openCreateProfileModal = function() {
+      document.getElementById('new-profile-name').value = '';
+      document.getElementById('new-profile-role').value = '';
+      document.getElementById('new-profile-img').value = '';
+      document.getElementById('modal-overlay').style.display = 'block';
+      document.getElementById('create-profile-modal').style.display = 'block';
+    };
+
+    window.createNewProfile = function() {
+      const name = document.getElementById('new-profile-name').value.trim();
+      const role = document.getElementById('new-profile-role').value.trim();
+      const img = document.getElementById('new-profile-img').value.trim() || 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=100';
+
+      if (!name) return alert("Profile name is required.");
+      if (appData.users.includes(name)) return alert("A profile with this name already exists.");
+
+      const newProfile = {
+        name: name, role: role, img: img,
+        layout: { gap: 20, padding: 18, items: JSON.parse(JSON.stringify(defaultDashboardItems)) },
+        leftSidebar: JSON.parse(JSON.stringify(baseLeftSidebar)),
+        rightSidebar: JSON.parse(JSON.stringify(baseRightSidebar))
+      };
+      
+      appData.users.push(name);
+      localStorage.setItem(PROFILE_PREFIX + name, JSON.stringify(newProfile));
+      
+      switchUserProfile(name);
+      closeAllModals();
+      if(window.ot) ot.toast(`Profile for ${name} created.`, "Success", {variant: "success"});
+    };
+
+    // New Delete User Profile Functionality
+    window.deleteUserProfile = function() {
+      if (appData.users.length <= 1) {
+        alert("Cannot delete the only remaining user profile.");
+        return;
+      }
+      if (confirm(`Are you sure you want to completely remove the user "${appData.activeUser}" and their unique layout data?`)) {
+        // Clear layout storage physically from device
+        localStorage.removeItem(PROFILE_PREFIX + appData.activeUser);
+        
+        // Remove from index
+        appData.users = appData.users.filter(u => u !== appData.activeUser);
+        appData.activeUser = appData.users[0]; // Switch to first available
+        localStorage.setItem(INDEX_KEY, JSON.stringify(appData));
+        
+        // Reset app state
+        loadProfile(appData.activeUser);
+        renderSidebars();
+        renderUI();
+        if(window.ot) ot.toast("User profile removed.", "Success", {variant: "danger"});
+      }
+    };
+
+    /* --- SIDEBAR NAV EDITING STATE --- */
+    let currentNavEditSide = null; let currentNavEditIndex = null;
+
+    window.openAddNavModal = function(side) {
+      currentNavEditSide = side; currentNavEditIndex = null;
+      document.getElementById('nav-modal-title').innerText = "Add Navigation Item (" + side + ")";
+      document.getElementById('nav-input-title').value = ""; document.getElementById('nav-input-href').value = "";
+      document.getElementById('modal-overlay').style.display = 'block'; document.getElementById('nav-item-modal').style.display = 'block';
+    }
+
+    window.openEditNavModal = function(side, index) {
+      currentNavEditSide = side; currentNavEditIndex = index;
+      const item = activeProfile()[side === 'left' ? 'leftSidebar' : 'rightSidebar'].nav[index];
+      document.getElementById('nav-modal-title').innerText = "Edit Navigation Item";
+      document.getElementById('nav-input-title').value = item.title || ""; document.getElementById('nav-input-href').value = item.href || "";
+      document.getElementById('modal-overlay').style.display = 'block'; document.getElementById('nav-item-modal').style.display = 'block';
+    }
+
+    window.saveNavItem = function() {
+      if (!currentNavEditSide) return;
+      const title = document.getElementById('nav-input-title').value.trim();
+      const href = document.getElementById('nav-input-href').value.trim();
+      if (!title) { if(window.ot) ot.toast("Title is required", "Validation Error", { variant: "danger" }); return; }
+      
+      const navList = activeProfile()[currentNavEditSide === 'left' ? 'leftSidebar' : 'rightSidebar'].nav;
+      const defaultIcon = '<i class="fa-solid fa-circle"></i>';
+
+      if (currentNavEditIndex === null) navList.push({ title, icon: defaultIcon, href: href || undefined });
+      else { navList[currentNavEditIndex].title = title; navList[currentNavEditIndex].href = href || undefined; }
+
+      saveLayout(); renderSidebars(); closeAllModals();
+    }
+
+    window.deleteNavItem = function(side, index) {
+      if (confirm("Delete this navigation item?")) {
+        activeProfile()[side === 'left' ? 'leftSidebar' : 'rightSidebar'].nav.splice(index, 1);
+        saveLayout(); renderSidebars();
+      }
+    }
+
+    /* --- SIDEBAR RENDERING SYSTEM --- */
+    function renderSidebars() {
+      const current = activeProfile();
+      const left = current.leftSidebar;
+      const right = current.rightSidebar;
+      
+      const leftAside = document.getElementById('left-sidebar');
+      const rightAside = document.getElementById('right-sidebar');
+
+      leftAside.style.setProperty('--sidebar-width', left.width + 'px');
+      leftAside.style.setProperty('--sb-pad', left.padding + 'px');
+      rightAside.style.setProperty('--sidebar-width', right.width + 'px');
+      rightAside.style.setProperty('--sb-pad', right.padding + 'px');
+
+      const currentThemeId = document.documentElement.getAttribute('data-theme') || 'indigo-light';
+      const themeOptions = Object.entries(themePresets).map(([id, t]) => `<option value="${id}" ${id === currentThemeId ? 'selected' : ''}>${t.label}</option>`).join('');
+      
+      const profileOptions = appData.users.map(username => 
+        `<option value="${username}" ${username === appData.activeUser ? 'selected' : ''}>${username}</option>`
+      ).join('');
+
+      leftAside.innerHTML = `
+        <div class="sidebar-header">
+          <button class="toggle-sidebar-btn" onclick="toggleLeftSidebar()" data-tooltip="Collapse" data-tooltip-placement="right">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <span class="sidebar-logo"><span>${left.header.title}  ${left.header.icon}</span></span>
+        </div>
+        <ul class="sidebar-nav">
+          ${left.nav.map((n, idx) => `
+            <li>
+              <a href="#" class="nav-item ${n.active ? 'active' : ''}" data-tooltip="${n.title}" data-tooltip-placement="right"
+                ${n.href ? `onclick="window.open('${n.href}','_blank');return false;"` : (n.action ? `onclick="${n.action};return false;"` : 'onclick="return false;"')}>
+                <span class="nav-icon">${n.icon}</span><span class="nav-text">${n.title}</span>
+              </a>
+              ${!isLocked ? `
+                <div class="nav-edit-actions" style="display:flex;gap:3px;flex-shrink:0;">
+                  <button onclick="openEditNavModal('left',${idx})" style="background:var(--muted);border:1px solid var(--border);color:var(--muted-foreground);border-radius:var(--radius-small);padding:4px 7px;cursor:pointer;font-size:11px;line-height:1;" title="Edit">✏️</button>
+                  <button onclick="deleteNavItem('left',${idx})" style="background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:var(--radius-small);padding:4px 7px;cursor:pointer;font-size:11px;line-height:1;" title="Delete">✕</button>
+                </div>` : ''}
+            </li>
+          `).join('')}
+          ${!isLocked ? `<li class="nav-add-btn" style="margin-top:6px;">
+            <button onclick="openAddNavModal('left')" style="width:100%;padding:8px;background:color-mix(in srgb,var(--primary) 10%,transparent);border:1.5px dashed var(--primary);color:var(--primary);border-radius:var(--radius-medium);cursor:pointer;font-size:12.5px;font-weight:600;">+ Add Nav Item</button>
+          </li>` : ''}
+        </ul>
+        <div class="sidebar-controls-section">
+          <div class="section-title">${left.controlsTitle}</div>
+          <div class="sidebar-controls-group">
+            ${left.controls.map(c => {
+               let idAttr = c.id ? `id="${c.id}"` : '';
+               let icon = c.id === 'lock-btn' ? `<i class="fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'}"></i>` : c.icon;
+               let label = c.id === 'lock-btn' ? `<span>${isLocked ? 'Unlock Layout' : 'Lock Layout'}</span>` : `<span>${c.title}</span>`;
+               return `<button ${idAttr} onclick="${c.action}" class="sidebar-btn ${c.style || ''}" data-tooltip="${c.title}" data-tooltip-placement="right">${icon}${label}</button>`;
+            }).join('')}
+          </div>
+          <div class="theme-select-wrapper">
+            <div class="section-title">🎨 Theme</div>
+            <select id="theme-select" onchange="changeTheme(this.value)">${themeOptions}</select>
+          </div>
+        </div>
+        <div class="sidebar-footer">
+          <div class="profile-card">
+            <img src="${current.img}" class="profile-img" alt="${current.name}">
+            <div class="profile-info">
+              <div class="profile-name">${current.name}</div>
+              <div class="profile-role">${current.role}</div>
+            </div>
+          </div>
+          <div class="profile-actions">
+            <select class="profile-select" onchange="switchUserProfile(this.value)">
+               ${profileOptions}
+            </select>
+            <button class="profile-add-btn" onclick="openCreateProfileModal()" title="Create User Profile">
+               <i class="fa-solid fa-user-plus"></i>
+            </button>
+            <button class="profile-action-btn danger" onclick="deleteUserProfile()" title="Delete Profile & Layout">
+               <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+
+      rightAside.innerHTML = `
+        <div class="sidebar-header">
+          <button class="toggle-sidebar-btn" onclick="toggleRightSidebar()" data-tooltip="Collapse" data-tooltip-placement="left">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <span class="sidebar-logo"><span>${right.header.title}</span></span>
+        </div>
+        <ul class="sidebar-nav">
+          ${right.nav.map((n, idx) => `
+            <li>
+              <a href="#" class="nav-item" data-tooltip="${n.title}" data-tooltip-placement="left"
+                ${n.href ? `onclick="window.open('${n.href}','_blank');return false;"` : (n.action ? `onclick="${n.action};return false;"` : 'onclick="return false;"')}>
+                <span class="nav-icon">${n.icon}</span>
+                <span class="nav-text">${n.title}</span>
+              </a>
+              ${!isLocked ? `
+                <div class="nav-edit-actions" style="display:flex;gap:3px;flex-shrink:0;">
+                  <button onclick="openEditNavModal('right',${idx})" style="background:var(--muted);border:1px solid var(--border);color:var(--muted-foreground);border-radius:var(--radius-small);padding:4px 7px;cursor:pointer;font-size:11px;line-height:1;" title="Edit">✏️</button>
+                  <button onclick="deleteNavItem('right',${idx})" style="background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:var(--radius-small);padding:4px 7px;cursor:pointer;font-size:11px;line-height:1;" title="Delete">✕</button>
+                </div>` : ''}
+            </li>
+          `).join('')}
+          ${!isLocked ? `<li class="nav-add-btn" style="margin-top:6px;">
+            <button onclick="openAddNavModal('right')" style="width:100%;padding:8px;background:color-mix(in srgb,var(--primary) 10%,transparent);border:1.5px dashed var(--primary);color:var(--primary);border-radius:var(--radius-medium);cursor:pointer;font-size:12.5px;font-weight:600;font-family:var(--font-sans);">+ Add Nav Item</button>
+          </li>` : ''}
+        </ul>
+      `;
+
+    }
+
+    /* --- DRAG & DROP & RESIZE FUNCTIONALITY --- */
+    let isDragging = false;
+    let dragEl = null, placeholder = null;
+    let offsetX, offsetY;
+    let resizingRight = null, resizingBottom = null;
+    let resizeStartX = 0, resizeStartY = 0;
+    let initialColSpan = 4, initialHeight = 100;
+
+    function getMaxCols() { return 12; }
+    function getCoords(e) { return (e.touches && e.touches.length > 0) ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY }; }
+
+    function checkOverflowStates() {
+      document.querySelectorAll('.dynamic-box').forEach(box => {
+        if (box.scrollHeight > box.clientHeight || box.scrollWidth > box.clientWidth) box.classList.add('has-overflow');
+        else box.classList.remove('has-overflow');
+      });
+    }
+
+    function startDragDOM(coords) {
+      placeholder = document.createElement('div'); placeholder.className = 'placeholder'; placeholder.style.height = getComputedStyle(dragEl).height;
+      const dataItem = activeProfile().layout.items.find(i => i.id === dragEl.id);
+      placeholder.style.gridColumn = `span ${Math.min(dataItem ? dataItem.colSpan : 4, getMaxCols())}`;
+      
+      dragEl.parentNode.insertBefore(placeholder, dragEl);
+      dragEl.classList.add('dragging');
+      dragEl.style.left = (coords.x - offsetX) + 'px';
+      dragEl.style.top = (coords.y - offsetY) + 'px';
+      document.body.classList.add('is-dragging');
+    }
+
+    function handleDragStart(e) {
+      if (isLocked || e.target.classList.contains('edit-btn') || e.target.closest('.comp-btn') || e.target.closest('.comp-toggle-btn') || e.target.closest('.comp-onoff-btn') || e.target.closest('input') || e.target.closest('select') || e.target.classList.contains('resize-handle-right') || e.target.classList.contains('resize-handle-bottom')) return;
+      const el = e.target.closest('.dynamic-box');
+      if (!el) return;
+
+      const coords = getCoords(e);
+      const rect = el.getBoundingClientRect();
+      isDragging = true; dragEl = el; offsetX = coords.x - rect.left; offsetY = coords.y - rect.top;
+      startDragDOM(coords);
+    }
+
+    // --- Touch Handling Variables ---
+let touchTimer = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let pendingTouchEvent = null;
+
+const HOLD_DELAY = 400; // Time in ms before drag starts
+const MOVE_SLOP = 8;    // Pixels of movement allowed before assuming scroll
+
+// Helper to quickly check guard conditions before setting timer
+function canStartDrag(target) {
+  if (isLocked) return false;
+  if (target.classList.contains('edit-btn') || target.classList.contains('resize-handle-right') || target.classList.contains('resize-handle-bottom')) return false;
+  if (target.closest('.comp-btn, .comp-toggle-btn, .comp-onoff-btn, input, select')) return false;
+  if (!target.closest('.dynamic-box')) return false;
+  return true;
+}
+
+    function handleDragMove(e) {
+      if (isLocked || !isDragging || !dragEl) return;
+      if (e.cancelable) e.preventDefault(); 
+      const coords = getCoords(e);
+
+      dragEl.style.left = (coords.x - offsetX) + 'px'; dragEl.style.top = (coords.y - offsetY) + 'px';
+
+      const hoveredEl = document.elementFromPoint(coords.x, coords.y);
+      if (!hoveredEl) return;
+      const targetBox = hoveredEl.closest('.dynamic-box:not(.dragging)');
+      if (targetBox) {
+        const targetRect = targetBox.getBoundingClientRect();
+        targetBox.parentNode.insertBefore(placeholder, coords.y < targetRect.top + (targetRect.height / 2) ? targetBox : targetBox.nextSibling);
+      } else if (hoveredEl.id === 'app-container' || hoveredEl.tagName === 'MAIN') {
+        container.appendChild(placeholder);
+      }
+    }
+
+    function handleDragEnd() {
+      if (isDragging && dragEl && placeholder) {
+        placeholder.parentNode.insertBefore(dragEl, placeholder); placeholder.remove();
+        dragEl.classList.remove('dragging'); dragEl.style.left = ''; dragEl.style.top = '';
+        isDragging = false; dragEl = null; placeholder = null; document.body.classList.remove('is-dragging');
+        
+        const reorderedIds = Array.from(container.querySelectorAll('.dynamic-box')).map(el => el.id);
+        const currentItems = activeProfile().layout.items;
+        activeProfile().layout.items = reorderedIds.map(id => currentItems.find(i => i.id === id)).filter(Boolean);
+        saveLayout();
+      }
+    }
+
+    function initResize(e, elId, direction) {
+      if (isLocked) return;
+      e.stopPropagation(); e.preventDefault();
+      const item = activeProfile().layout.items.find(i => i.id === elId);
+      const coords = getCoords(e);
+      if (direction === 'right') { resizingRight = item; resizeStartX = coords.x; initialColSpan = item.colSpan || 4; }
+      else if (direction === 'bottom') { resizingBottom = item; resizeStartY = coords.y; initialHeight = parseInt(window.getComputedStyle(document.getElementById(elId)).height) || 200; }
+      document.body.classList.add('is-resizing');
+
+      document.addEventListener('mousemove', onResizeMove); document.addEventListener('mouseup', onResizeEnd);
+      document.addEventListener('touchmove', onResizeMove, {passive: false}); document.addEventListener('touchend', onResizeEnd);
+    }
+
+    function onResizeMove(e) {
+      const coords = getCoords(e);
+      if (resizingRight) {
+        const maxCols = getMaxCols();
+        const colWidth = (container.clientWidth - (activeProfile().layout.gap * (maxCols - 1))) / maxCols;
+        let newSpan = Math.max(1, Math.min(maxCols, initialColSpan + Math.round((coords.x - resizeStartX) / colWidth)));
+        resizingRight.colSpan = newSpan; document.getElementById(resizingRight.id).style.gridColumn = `span ${newSpan}`;
+      }
+      if (resizingBottom) {
+        let newHeight = Math.max(80, initialHeight + (coords.y - resizeStartY));
+        resizingBottom.height = newHeight + 'px'; document.getElementById(resizingBottom.id).style.height = newHeight + 'px';
+      }
+      checkOverflowStates();
+    }
+
+    function onResizeEnd() {
+      if (resizingRight || resizingBottom) { saveLayout(); renderUI(); }
+      resizingRight = null; resizingBottom = null;
+      document.body.classList.remove('is-resizing');
+      document.removeEventListener('mousemove', onResizeMove); document.removeEventListener('mouseup', onResizeEnd);
+      document.removeEventListener('touchmove', onResizeMove); document.removeEventListener('touchend', onResizeEnd);
+    }
+
+    container.addEventListener('mousedown', handleDragStart); // container.addEventListener('touchstart', handleDragStart, {passive: true});
+    // 2. Touch starts the delay timer
+container.addEventListener('touchstart', (e) => {
+  if (!canStartDrag(e.target)) return;
+
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  pendingTouchEvent = e;
+
+  // Start hold timer
+  touchTimer = setTimeout(() => {
+    handleDragStart(pendingTouchEvent);
+    touchTimer = null;
+  }, HOLD_DELAY);
+}, { passive: true });
+
+// 3. Touch move detects scrolling vs. dragging
+container.addEventListener('touchmove', (e) => {
+  if (isDragging) {
+    // Lock scrolling while dragging an active box
+    if (e.cancelable) e.preventDefault();
+    return;
+  }
+
+  // If timer is still running, check if user scrolled beyond 8px
+  if (touchTimer) {
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartX);
+    const deltaY = Math.abs(touch.clientY - touchStartY);
+
+    if (deltaX > MOVE_SLOP || deltaY > MOVE_SLOP) {
+      clearTimeout(touchTimer);
+      touchTimer = null;
+    }
+  }
+}, { passive: false }); // Needs passive: false to allow e.preventDefault() during drag
+
+// 4. Cancel timer if touch ends early
+const cancelTouch = () => {
+  if (touchTimer) {
+    clearTimeout(touchTimer);
+    touchTimer = null;
+  }
+};
+
+container.addEventListener('touchend', cancelTouch);
+container.addEventListener('touchcancel', cancelTouch);  
+    document.addEventListener('mousemove', handleDragMove); document.addEventListener('touchmove', handleDragMove, {passive: false});
+    document.addEventListener('mouseup', handleDragEnd); document.addEventListener('touchend', handleDragEnd);
+
+    let currentEditId = null;
+
+    window.openLayoutSettingsModal = function() {
+      const currentLayout = activeProfile().layout;
+      
+      document.getElementById('setting-gap').value = currentLayout.gap;
+      document.getElementById('setting-padding').value = currentLayout.padding;
+      document.getElementById('gap-val').innerText = currentLayout.gap;
+      document.getElementById('padding-val').innerText = currentLayout.padding;
+
+      document.getElementById('setting-sb-width').value = activeProfile().leftSidebar.width;
+      document.getElementById('setting-sb-padding').value = activeProfile().leftSidebar.padding;
+      document.getElementById('sb-width-val').innerText = activeProfile().leftSidebar.width;
+      document.getElementById('sb-padding-val').innerText = activeProfile().leftSidebar.padding;
+
+      document.getElementById('modal-overlay').style.display = 'block';
+      document.getElementById('layout-settings-modal').style.display = 'block';
+    }
+
+    window.updateGapPreview = function(val) { document.getElementById('gap-val').innerText = val; container.style.gap = val + 'px'; }
+    window.updatePaddingPreview = function(val) { document.getElementById('padding-val').innerText = val; document.querySelectorAll('.dynamic-box').forEach(box => box.style.padding = val + 'px'); }
+    
+    window.updateSbWidthPreview = function(val) {
+      document.getElementById('sb-width-val').innerText = val;
+      document.getElementById('left-sidebar').style.setProperty('--sidebar-width', val + 'px');
+      document.getElementById('right-sidebar').style.setProperty('--sidebar-width', val + 'px');
+    }
+    
+    window.updateSbPaddingPreview = function(val) {
+      document.getElementById('sb-padding-val').innerText = val;
+      document.getElementById('left-sidebar').style.setProperty('--sb-pad', val + 'px');
+      document.getElementById('right-sidebar').style.setProperty('--sb-pad', val + 'px');
+    }
+
+    window.saveLayoutSettings = function() {
+      activeProfile().layout.gap = parseInt(document.getElementById('setting-gap').value) || 0;
+      activeProfile().layout.padding = parseInt(document.getElementById('setting-padding').value) || 0;
+      
+      activeProfile().leftSidebar.width = parseInt(document.getElementById('setting-sb-width').value) || 260;
+      activeProfile().rightSidebar.width = parseInt(document.getElementById('setting-sb-width').value) || 260;
+      activeProfile().leftSidebar.padding = parseInt(document.getElementById('setting-sb-padding').value) || 12;
+      activeProfile().rightSidebar.padding = parseInt(document.getElementById('setting-sb-padding').value) || 12;
+
+      saveLayout(); renderUI(); closeAllModals();
+    }
+
+    /* --- RECURSIVE COMPONENT EDITING SUPPORT --- */
+    window.openEditMenu = function(id) {
+      if (isLocked) return;
+      currentEditId = id;
+      const item = activeProfile().layout.items.find(i => i.id === id);
+      document.getElementById('edit-colspan').value = Math.min(item.colSpan || 4, getMaxCols());
+      document.getElementById('edit-colspan').max = getMaxCols();
+      document.getElementById('edit-color').value = item.bg;
+      renderComponentsEditor();
+      document.getElementById('modal-overlay').style.display = 'block'; document.getElementById('edit-modal').style.display = 'block';
+    }
+
+    function renderComponentsEditor() {
+      const item = activeProfile().layout.items.find(i => i.id === currentEditId);
+      document.getElementById('components-editor-list').innerHTML = generateEditorHTML(item.components || [], '');
+    }
+
+    function generateEditorHTML(comps, pathPrefix) {
+      let html = '';
+      comps.forEach((comp, idx) => {
+        let currentPath = pathPrefix === '' ? `${idx}` : `${pathPrefix},${idx}`;
+        let specificInputs = '';
+        
+        if (comp.type === 'div') {
+          specificInputs = `<div class="full-w"><label>Container Text (Fallback)</label><input type="text" value="${comp.content || ''}" oninput="updateCompProp('${currentPath}', 'content', this.value)"></div><div><label>Background</label><input type="color" value="${comp.bg || '#f8fafc'}" oninput="updateCompProp('${currentPath}', 'bg', this.value)"></div><div class="full-w" style="border: 1px dashed var(--border); padding: 8px; border-radius: 6px; margin-top: 6px;"><label style="display:block; margin-bottom: 6px;">Nested Components</label><div style="display:flex; flex-direction:column; gap:8px;">${generateEditorHTML(comp.components || [], currentPath)}</div><button type="button" onclick="addComponentRow('${currentPath}')" style="width:100%; margin-top:6px; font-size:11px; padding: 4px;">+ Add Nested Component</button></div>`;
+        } else if (comp.type === 'text') {
+          specificInputs = `<div class="full-w"><label>Text Value</label><input type="text" value="${comp.value || ''}" oninput="updateCompProp('${currentPath}', 'value', this.value)"></div><div><label>Font Size</label><input type="text" value="${comp.size || '13px'}" oninput="updateCompProp('${currentPath}', 'size', this.value)"></div><div><label>Text Color</label><input type="color" value="${comp.color || '#0f172a'}" oninput="updateCompProp('${currentPath}', 'color', this.value)"></div><div class="full-w"><label>Position Alignment</label><select onchange="updateCompProp('${currentPath}', 'align', this.value)"><option value="left" ${(comp.align==='left'||!comp.align)?'selected':''}>Left</option><option value="center" ${comp.align==='center'?'selected':''}>Center</option><option value="right" ${comp.align==='right'?'selected':''}>Right</option></select></div>`; 
+        } else if (comp.type === 'button') {
+          specificInputs = `<div class="full-w"><label>Button Label</label><input type="text" value="${comp.label || ''}" oninput="updateCompProp('${currentPath}', 'label', this.value)"></div><div><label>Background Color</label><input type="color" value="${comp.bg || '#4f46e5'}" oninput="updateCompProp('${currentPath}', 'bg', this.value)"></div><div><label>Text Color</label><input type="color" value="${comp.color || '#ffffff'}" oninput="updateCompProp('${currentPath}', 'color', this.value)"></div>`;
+        } else if (comp.type === 'toggle-btn') {
+          specificInputs = `<div class="full-w"><label>Button Label</label><input type="text" value="${comp.label || ''}" oninput="updateCompProp('${currentPath}', 'label', this.value)"></div><div class="full-w"><label>Initial Active State</label><select onchange="updateCompProp('${currentPath}', 'active', this.value === 'true')"><option value="false" ${!comp.active?'selected':''}>Inactive</option><option value="true" ${comp.active?'selected':''}>Active</option></select></div>`;
+        } else if (comp.type === 'onoff-group') {
+          specificInputs = `<div><label>On Label</label><input type="text" value="${comp.labelOn || 'ON'}" oninput="updateCompProp('${currentPath}', 'labelOn', this.value)"></div><div><label>Off Label</label><input type="text" value="${comp.labelOff || 'OFF'}" oninput="updateCompProp('${currentPath}', 'labelOff', this.value)"></div><div class="full-w"><label>Initial State</label><select onchange="updateCompProp('${currentPath}', 'state', this.value)"><option value="on" ${comp.state==='on'?'selected':''}>ON</option><option value="off" ${comp.state==='off'?'selected':''}>OFF</option></select></div>`;
+        } else if (comp.type === 'switch') {
+          specificInputs = `<div class="full-w"><label>Switch Label</label><input type="text" value="${comp.label || ''}" oninput="updateCompProp('${currentPath}', 'label', this.value)"></div><div class="full-w"><label>Checked State</label><select onchange="updateCompProp('${currentPath}', 'checked', this.value === 'true')"><option value="false" ${!comp.checked?'selected':''}>Unchecked</option><option value="true" ${comp.checked?'selected':''}>Checked</option></select></div>`;
+        } else if (comp.type === 'slider') {
+          specificInputs = `<div class="full-w"><label>Slider Label</label><input type="text" value="${comp.label || ''}" oninput="updateCompProp('${currentPath}', 'label', this.value)"></div><div><label>Min</label><input type="number" value="${comp.min !== undefined ? comp.min : 0}" oninput="updateCompProp('${currentPath}', 'min', parseFloat(this.value))"></div><div><label>Max</label><input type="number" value="${comp.max !== undefined ? comp.max : 100}" oninput="updateCompProp('${currentPath}', 'max', parseFloat(this.value))"></div><div><label>Current Value</label><input type="number" value="${comp.value !== undefined ? comp.value : 0}" oninput="updateCompProp('${currentPath}', 'value', parseFloat(this.value))"></div>`;
+        }
+
+        html += `
+          <div class="comp-edit-card">
+            <div class="comp-edit-top">
+              <select style="flex:1;" onchange="changeCompType('${currentPath}', this.value)">
+                <option value="text" ${comp.type==='text'?'selected':''}>Text Element</option>
+                <option value="button" ${comp.type==='button'?'selected':''}>Button</option>
+                <option value="toggle-btn" ${comp.type==='toggle-btn'?'selected':''}>Toggle Button</option>
+                <option value="onoff-group" ${comp.type==='onoff-group'?'selected':''}>ON/OFF Group</option>
+                <option value="switch" ${comp.type==='switch'?'selected':''}>Switch Toggle</option>
+                <option value="slider" ${comp.type==='slider'?'selected':''}>Range Slider</option>
+                <option value="div" ${comp.type==='div'?'selected':''}>Container Div</option>
+              </select>
+              <button type="button" class="danger" onclick="deleteCompRow('${currentPath}')" style="padding: 6px 10px; font-size:11px;">Remove</button>
+            </div>
+            <div class="comp-edit-details">
+              ${specificInputs}
+            </div>
+          </div>
+        `;
+      });
+      return html;
+    }
+
+    /* --- COMPONENT CRUD FUNCTIONS --- */
+    window.updateCompProp = function(pathStr, propKey, propVal) {
+      const item = activeProfile().layout.items.find(i => i.id === currentEditId);
+      if (!item) return;
+      const path = pathStr.split(',').map(Number);
+      let targetArr = item.components;
+      for (let i = 0; i < path.length - 1; i++) {
+        targetArr = targetArr[path[i]].components;
+      }
+      targetArr[path[path.length - 1]][propKey] = propVal;
+    };
+
+    window.addComponentRow = function(parentPathStr) {
+      const item = activeProfile().layout.items.find(i => i.id === currentEditId);
+      if (!item) return;
+      let targetArr = item.components;
+      if (parentPathStr !== 'root') {
+        const path = parentPathStr.split(',').map(Number);
+        for (let i = 0; i < path.length; i++) {
+          targetArr = targetArr[path[i]].components = targetArr[path[i]].components || [];
+        }
+      }
+      targetArr.push({ type: 'text', value: 'New Element', size: '13.5px', color: 'var(--foreground)', align: 'left' });
+      renderComponentsEditor();
+    };
+
+    window.changeCompType = function(pathStr, newType) {
+      const item = activeProfile().layout.items.find(i => i.id === currentEditId);
+      if (!item) return;
+      const path = pathStr.split(',').map(Number);
+      let targetArr = item.components;
+      for (let i = 0; i < path.length - 1; i++) {
+        targetArr = targetArr[path[i]].components;
+      }
+      let defaults = { type: newType };
+      if (newType === 'text') defaults = { type: 'text', value: 'Sample Text', size: '13.5px', color: 'var(--foreground)', align: 'left' };
+      else if (newType === 'button') defaults = { type: 'button', label: 'Action Button', bg: 'var(--primary)', color: 'var(--primary-foreground)' };
+      else if (newType === 'toggle-btn') defaults = { type: 'toggle-btn', label: 'Mode Toggle', active: false };
+      else if (newType === 'onoff-group') defaults = { type: 'onoff-group', labelOn: 'ON', labelOff: 'OFF', state: 'on' };
+      else if (newType === 'switch') defaults = { type: 'switch', label: 'Status Switch', checked: true };
+      else if (newType === 'slider') defaults = { type: 'slider', label: 'Control Level', min: 0, max: 100, value: 50 };
+      else if (newType === 'div') defaults = { type: 'div', content: '', bg: 'var(--faint)', components: [] };
+      
+      targetArr[path[path.length - 1]] = defaults;
+      renderComponentsEditor();
+    };
+
+    window.deleteCompRow = function(pathStr) {
+      const item = activeProfile().layout.items.find(i => i.id === currentEditId);
+      if (!item) return;
+      const path = pathStr.split(',').map(Number);
+      let targetArr = item.components;
+      for (let i = 0; i < path.length - 1; i++) {
+        targetArr = targetArr[path[i]].components;
+      }
+      targetArr.splice(path[path.length - 1], 1);
+      renderComponentsEditor();
+    };
+
+    window.saveEdit = function() {
+      if (!currentEditId) return;
+      const item = activeProfile().layout.items.find(i => i.id === currentEditId);
+      if (item) {
+        item.colSpan = parseInt(document.getElementById('edit-colspan').value) || 4;
+        item.bg = document.getElementById('edit-color').value;
+      }
+      saveLayout();
+      renderUI();
+      closeAllModals();
+    };
+
+    window.deleteCurrentWidget = function() {
+      if (!currentEditId) return;
+      if (confirm("Are you sure you want to remove this widget?")) {
+        activeProfile().layout.items = activeProfile().layout.items.filter(i => i.id !== currentEditId);
+        saveLayout();
+        renderUI();
+        closeAllModals();
+      }
+    };
+
+    /* --- WIDGET & UI RENDERER --- */
+    function renderComponent(comp) {
+      if (comp.type === 'text') {
+        return `<div class="comp-text" style="color:${comp.color || 'var(--foreground)'}; font-size:${comp.size || '13.5px'}; text-align:${comp.align || 'left'};">${comp.value || ''}</div>`;
+      }
+      if (comp.type === 'button') {
+        return `<button class="comp-btn" style="background:${comp.bg || 'var(--primary)'}; color:${comp.color || 'var(--primary-foreground)'};" onclick="${comp.onClick || ''}">${comp.label || 'Button'}</button>`;
+      }
+      if (comp.type === 'toggle-btn') {
+        return `<button class="comp-toggle-btn ${comp.active ? 'active' : ''}" onclick="this.classList.toggle('active'); ${comp.onChange || ''}">${comp.label || 'Toggle'}</button>`;
+      }
+      if (comp.type === 'onoff-group') {
+        const isOn = comp.state === 'on';
+        return `<div class="comp-onoff-group">
+          <button class="comp-onoff-btn ${isOn ? 'on-active' : ''}" onclick="this.parentElement.querySelectorAll('.comp-onoff-btn').forEach(b=>b.classList.remove('on-active','off-active')); this.classList.add('on-active'); ${comp.onChange || ''}">${comp.labelOn || 'ON'}</button>
+          <button class="comp-onoff-btn ${!isOn ? 'off-active' : ''}" onclick="this.parentElement.querySelectorAll('.comp-onoff-btn').forEach(b=>b.classList.remove('on-active','off-active')); this.classList.add('off-active'); ${comp.onChange || ''}">${comp.labelOff || 'OFF'}</button>
+        </div>`;
+      }
+      if (comp.type === 'switch') {
+        return `<div class="comp-switch-wrapper">
+          <span>${comp.label || 'Switch'}</span>
+          <label class="switch">
+            <input type="checkbox" ${comp.checked ? 'checked' : ''} onchange="${comp.onChange || ''}">
+            <span class="slider-switch"></span>
+          </label>
+        </div>`;
+      }
+      if (comp.type === 'slider') {
+        const val = comp.value !== undefined ? comp.value : (comp.min || 0);
+        return `<div class="comp-slider-group">
+          <div class="comp-slider-header">
+            <span>${comp.label || 'Slider'}</span>
+            <span class="slider-val">${val}</span>
+          </div>
+          <input type="range" min="${comp.min || 0}" max="${comp.max || 100}" value="${val}" step="${comp.step || 1}"
+            oninput="this.previousElementSibling.querySelector('.slider-val').innerText = this.value; ${comp.onChange || ''}">
+        </div>`;
+      }
+      if (comp.type === 'div') {
+        const inner = (comp.components || []).map(c => renderComponent(c)).join('');
+        return `<div class="comp-nested-div" style="background:${comp.bg || 'var(--faint)'}">
+          ${comp.content ? `<div>${comp.content}</div>` : ''}
+          ${inner}
+        </div>`;
+      }
+      return '';
+    }
+
+    function renderUI() {
+      const current = activeProfile();
+      container.style.gap = current.layout.gap + 'px';
+      document.body.classList.toggle('locked', isLocked);
+
+      container.innerHTML = current.layout.items.map(item => {
+        const compsHTML = (item.components || []).map(comp => renderComponent(comp)).join('');
+        return `
+          <div class="dynamic-box" id="${item.id}" style="grid-column: span ${Math.min(item.colSpan || 4, getMaxCols())}; height: ${item.height || 'auto'}; background: ${item.bg || 'var(--card)'}; padding: ${current.layout.padding}px;">
+            ${!isLocked ? `<button class="edit-btn" onclick="openEditMenu('${item.id}')"><i class="fa-solid fa-gear"></i> Edit</button>` : ''}
+            <div class="widget-content-container">
+              ${compsHTML}
+            </div>
+            <div class="overflow-arrow"><i class="fa-solid fa-chevron-down"></i> More</div>
+            <div class="resize-handle-right" onmousedown="initResize(event, '${item.id}', 'right')" ontouchstart="initResize(event, '${item.id}', 'right')"></div>
+            <div class="resize-handle-bottom" onmousedown="initResize(event, '${item.id}', 'bottom')" ontouchstart="initResize(event, '${item.id}', 'bottom')"></div>
+          </div>
+        `;
+      }).join('');
+
+      checkOverflowStates();
+    }
+
+    /* --- GLOBAL ACTIONS & UTILITIES --- */
+    window.toggleLock = function() {
+      isLocked = !isLocked;
+      if(window.ot) ot.toast(isLocked ? 'Layout locked' : 'Layout unlocked', 'Layout Mode', { variant: isLocked ? 'info' : 'warning' });
+      renderSidebars();
+      renderUI();
+    };
+
+    window.openAddModal = function() {
+      if (isLocked) return;
+      document.getElementById('modal-overlay').style.display = 'block';
+      document.getElementById('add-modal').style.display = 'block';
+    };
+
+    window.addWidget = function() {
+      const colSpan = parseInt(document.getElementById('new-colspan').value) || 4;
+      const bg = document.getElementById('new-color').value || '#ffffff';
+      const newId = 'box_' + Date.now();
+
+      activeProfile().layout.items.push({
+        id: newId,
+        colSpan: colSpan,
+        height: '220px',
+        bg: bg,
+        components: [
+          { type: 'text', value: 'New Custom Widget', size: '14px', color: 'var(--foreground)', align: 'left' }
+        ]
+      });
+
+      saveLayout();
+      renderUI();
+      closeAllModals();
+    };
+
+    window.closeAllModals = function() {
+      document.getElementById('modal-overlay').style.display = 'none';
+      document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+    };
+
+    window.exportJSON = function() {
+      // Isolate to export ONLY the currently active user layout mapping
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeProfileData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `tts_user_layout_${appData.activeUser}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    };
+
+    window.importJSON = function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          
+          if (parsed.profiles) {
+            // Support for legacy bundled files
+            appData.activeUser = parsed.activeUser || Object.keys(parsed.profiles)[0];
+            appData.users = Object.keys(parsed.profiles);
+            appData.users.forEach(u => localStorage.setItem(PROFILE_PREFIX + u, JSON.stringify(parsed.profiles[u])));
+            localStorage.setItem(INDEX_KEY, JSON.stringify(appData));
+            loadProfile(appData.activeUser);
+            saveLayout();
+            renderSidebars();
+            renderUI();
+            if(window.ot) ot.toast('Legacy layout bundle imported!', 'Import Success', { variant: 'success' });
+            
+          } else if (parsed.name && parsed.layout) {
+            // New Single-User Standard
+            const importedName = parsed.name;
+            if (!appData.users.includes(importedName)) {
+                appData.users.push(importedName);
+            }
+            appData.activeUser = importedName;
+            activeProfileData = parsed;
+            
+            saveLayout();
+            renderSidebars();
+            renderUI();
+            
+            if(window.ot) ot.toast(`User layout for ${importedName} imported!`, 'Import Success', { variant: 'success' });
+          } else {
+            alert('Invalid file format. Please upload a valid user layout export.');
+          }
+        } catch (err) {
+          alert('Error parsing JSON file.');
+        }
+        document.getElementById('import-file').value = ''; // Reset for re-uploads
+      };
+      reader.readAsText(file);
+    };
+
+    function init() {
+      renderSidebars();
+      renderUI();
+    }
+
+    init();
+  </script>
+</body>
+</html>
